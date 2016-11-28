@@ -13,13 +13,21 @@ if len(sys.argv) != 4:
      
 _, CONFIG, METODO, OPCION = sys.argv
 
-fich = open(CONFIG, 'r')
+CONFIG = open(CONFIG, 'r')
 
 parser = make_parser()
 kHandler = clienthandler.ClientHandler()
 parser.setContentHandler(kHandler)
-parser.parse(fich)
+parser.parse(CONFIG)
 data = kHandler.get_tags()
 
 print('DATOS DICCIONARIO:')
 print(data)
+
+SERVER = data["regproxy_ip"]
+PORT = data["regproxy_puerto"]
+
+if METODO == 'REGISTER':
+    LINE = 'REGISTER sip:' + data["account_username"]+':'+data["uaserver_puerto"]+ ' SIP/2.0\r\n' + 'Expires: ' + OPCION + '\r\n\r\n'
+
+print("Socket terminado.")
