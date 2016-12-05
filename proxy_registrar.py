@@ -37,7 +37,6 @@ fich = open(data['database_passwdpath'], 'r')
 lineas = fich.readlines()
 nonce = '654578'
 
-
 """
  BASE DE DATOS DE USUARIOS REGISTRADOS
 """
@@ -49,13 +48,14 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
     CREO FICHERO DE REGISTRO y escribo
     """
     def register2json(self):
-        json.dump(self.misdatos, open(data['userdata'], 'w'))
+        json.dump(self.misdatos, open(data['database_path'], 'w'))
+        
     """
     COMPRUEBA SI HAY FICHERO Y SI LO HAY LEE SU CONTENIDO Y LO USA LISTA DE USUARIO
     """
     def json2registered(self):
         try:
-            with open(data['userdata']) as client_file:
+            with open(data['database_path']) as client_file:
                 self.misdatos = json.load (client_file)
         except:
             self.register2json()
@@ -88,30 +88,17 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                             if dat_nonce == response:
                                 register = True
                                 print ('REGISTRO USUARIO')
+                            else:
+                                self.wfile.write(b"SIP/2.0 404 User Not Found\r\n")
                     if register == True:
                         self.json2registered()
-                     """
-                     
-                        self.json2registered()
-                        self.now = time.time()
-                        self.client_list = []
-                        #self.client_list.append(user)
-                        self.client_list.append(self.client_address[0]) # IP
-                        self.client_list.append(self.port) # Puerto
-                        self.client_list.append(self.now)
-                        self.client_list.append(float(self.expires) +\
-                              float(self.now))
-                        self.data_client[self.user] = self.client_list
-                        self.delete()
-                        self.client_list = []
-                     """
-                        self.hora = float(time.time()) + float(datos[-1])            
+                        self.hora = float(time.time()) + float(datos[4])    ##### ME DA LA HORA CAMBIADA; UNA HORA MENOS    
                         self.expires = time.strftime('%Y-%m-%d %H:%M:%S', 
                                                      time.gmtime(self.hora))
                         self.datoscliente = {'address': self.client_address[0], 'expires': self.expires}
-                        self.misdatos[datos[1].split(':')[-1]] = self.datoscliente
-                        if int(datos[-1]) == 0:
-                            del self.misdatos[datos[1].split(':')[-1]]     
+                        self.misdatos[datos[1].split(':')[1]] = self.datoscliente
+                        if int(datos[4]) == 0:
+                            del self.misdatos[datos[1].split(':')[4]]     
                         self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
                         #self.time_out()
                         self.register2json()
@@ -152,7 +139,6 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
 
 if __name__ == "__main__":
     serv = socketserver.UDPServer((SERVER, PORT), RegisterHandler)
-    print("Listening...")
     try:
         serv.serve_forever()
     except KeyboardInterrupt:
