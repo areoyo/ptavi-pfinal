@@ -54,20 +54,24 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         
     elif METODO == 'BYE': 
         LINE = 'BYE sip: {} SIP/2.0\r\n'.format(OPCION)
-    
-    
+        
     print("Enviando:", LINE)
+    my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
     
-    datos = data.decode('utf-8').split()
+    dato = my_socket.recv(1024)
+    datos = dato.decode('utf-8').split()
+    print(dato.decode('utf-8'))
+    
     if datos[1] == '401':
-        # nonce = datos[6] #
-        # h = hashlib.sha1()
-        # h.update(bytes(data[account_passwd], 'utf-8'))
-        # h.update(bytes(nonce, 'utf-8'))
-        # h.digest()
-        LINE = 'REGISTER sip:' + SIP + ' SIP/2.0\r\n' + 'Expires: ' + OPCION
+        nonce = datos[6] 
+        h = hashlib.sha1()
+        h.update(bytes(data["account_passwd"], 'utf-8'))
+        h.update(bytes(nonce, 'utf-8'))
+        h.digest()
+        LINE = 'REGISTER sip:' + SIP + ' SIP/2.0\r\n' + 'Expires: ' + OPCION + '\r\n'
         LINE += 'Authorization: Digest response= {} \r\n\r\n'.format(h.digest()) #METO CONTRASEÑA?
         
-        my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+    print("Enviando:", LINE)
+    my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
 
 print("Socket terminado.")
