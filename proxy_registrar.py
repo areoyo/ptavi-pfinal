@@ -8,6 +8,8 @@ from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 import useragenthandler
 import hashlib
+import time
+import json
 
 """
  COMPROBACION DE LA ENTRADA
@@ -31,8 +33,32 @@ print(data)
 
 SERVER = data["server_ip"]
 PORT = int(data["server_puerto"])
+fich = open(data['database_passwdpath'], 'r')
+lineas = fich.readlines()
+nonce = '654578'
 
-class EchoHandler(socketserver.DatagramRequestHandler):
+
+"""
+ BASE DE DATOS DE USUARIOS REGISTRADOS
+"""
+class RegisterHandler(socketserver.DatagramRequestHandler):
+
+    misdatos= {}
+    
+    """
+    CREO FICHERO DE REGISTRO y escribo
+    """
+    def register2json(self):
+        json.dump(self.misdatos, open(data['userdata'], 'w'))
+    """
+    COMPRUEBA SI HAY FICHERO Y SI LO HAY LEE SU CONTENIDO Y LO USA LISTA DE USUARIO
+    """
+    def json2registered(self):
+        try:
+            with open(data['userdata']) as client_file:
+                self.misdatos = json.load (client_file)
+        except:
+            self.register2json()
 
     def handle(self):
         # Escribe dirección y puerto del cliente (de tupla client_address)
@@ -49,81 +75,83 @@ class EchoHandler(socketserver.DatagramRequestHandler):
              CODIGOS DE RESPUESTA
             """                
             if datos[0] == 'REGISTER':
-                self.wfile.write(b"SIP/2.0 401 Unauthorized\r\n")
-                if datos[5] == 'Authorization':
-                    self.wfile.write(b"SIP/2.0 200 OK" + b"\r\n")
+                if datos[5] == 'Authorization:':
+                    response = datos[-1]                 
+                    user = datos[1].split(':')[1]
+                    for line in lineas:
+                        if line.split()[0] == user:
+                            dat_passwd = line.split()[-1]
+                            h = hashlib.sha1()
+                            h.update(bytes(dat_passwd, 'utf-8'))
+                            h.update(bytes(nonce, 'utf-8'))
+                            dat_nonce = h.hexdigest()
+                            if dat_nonce == response:
+                                register = True
+                                print ('REGISTRO USUARIO')
+                    if register == True:
+                        self.json2registered()
+                     """
+                     
+                        self.json2registered()
+                        self.now = time.time()
+                        self.client_list = []
+                        #self.client_list.append(user)
+                        self.client_list.append(self.client_address[0]) # IP
+                        self.client_list.append(self.port) # Puerto
+                        self.client_list.append(self.now)
+                        self.client_list.append(float(self.expires) +\
+                              float(self.now))
+                        self.data_client[self.user] = self.client_list
+                        self.delete()
+                        self.client_list = []
+                     """
+                        self.hora = float(time.time()) + float(datos[-1])            
+                        self.expires = time.strftime('%Y-%m-%d %H:%M:%S', 
+                                                     time.gmtime(self.hora))
+                        self.datoscliente = {'address': self.client_address[0], 'expires': self.expires}
+                        self.misdatos[datos[1].split(':')[-1]] = self.datoscliente
+                        if int(datos[-1]) == 0:
+                            del self.misdatos[datos[1].split(':')[-1]]     
+                        self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
+                        #self.time_out()
+                        self.register2json()
+                        print (self.misdatos)
+
                 else:
-                    self.wfile.write(b'WWW Authenticare: Digest nonce:"45"\r\n')
+                    self.wfile.write(b"SIP/2.0 401 Unauthorized\r\n")
+                    self.wfile.write(b'WWW Authenticare: Digest nonce: ' + bytes(nonce, 'utf-8') + b'\r\n')
+                    register = False
+                    
+                    
             elif datos[0] == "INVITE":
                 self.wfile.write(b"SIP/2.0 100 Trying" + b"\r\n")
                 self.wfile.write(b"SIP/2.0 180 Ring" + b"\r\n")
                 LINE = 'SIP/2.0 200 OK\r\n'
                 LINE += 'Content-Type: application/sdp' + '\r\n\r\n' 
                 LINE += 'v = 0\r\n' 
-                LINE += 'o = {} {}\r\n'.format(data["account_username"], data['uaserver_ip'])
-                LINE += 's = MiSesion\r\n'
+                LINE += 'o = {} {}\r\n'.format(datos[12], datos[13])
+                LINE += 's = ' + data['server_name'] + '\r\n'
                 LINE += 't = 0\r\n'
-                LINE += 'm = audio {} RTP\r\n'.format(data['rtpaudio_puerto'])
+                LINE += 'm = audio {} RTP\r\n'.format(datos[-2])
+                
                 self.wfile.write(bytes(LINE,'utf-8'))
             elif datos[0] == "ACK":
                 aEjecutar = "./mp32rtp -i " + IP + " -p 23032 < " + FICH
                 print("Vamos a ejecutar ", aEjecutar)
                 os.system(aEjecutar)
+                
             elif datos[0] == "BYE":
-                self.wfile.write(b"\r\n" + b"SIP/2.0 200 OK" + b"\r\n")
+                self.wfile.write(b"\r\n" + b"SIP/2.0 200 OK\r\n")
+                
             elif datos[0] != "INVITE" or "BYE" or "ACK":
-                self.wfile.write(b"SIP/2.0 405 Method Not Allowed" + b"\r\n")
+                self.wfile.write(b"SIP/2.0 405 Method Not Allowed\r\n")
+                
             else:
-                self.wfile.write(b"SIP/2.0 400 Bad Request" + b"\r\n")
-
-"""
- BASE DE DATOS DE USUARIOS REGISTRADOS
-"""
-class RegisterHandler(socketserver.DatagramRequestHandler):
-
-    misdatos= {}
-    
-    """
-    CREO FICHERO DE REGISTRO
-    """
-    def register2json(self):
-        json.dump(self.misdatos, open('registered.json', 'w'))
-    
-    def json2registered(self):
-        try:
-            with open('registered.json') as client_file:
-                self.misdatos = json.load (client_file)
-        except:
-            self.register2json()
-    
-    def time_out(self):
-        cliente = []
-        for client in self.misdatos:
-            time_expires = self.misdatos[client]['expires']
-            time_expire = time.strptime(time_expires, '%Y-%m-%d %H:%M:%S')
-            if time_expire <= time.gmtime(time.time()):
-                cliente.append(client)
-        for hora in cliente:
-            del self.misdatos[hora]
-                 
-    def handle(self):        
-        datos = self.rfile.read().decode('utf-8').split()
-        if datos[0] == 'REGISTER':
-            self.hora = float(time.time()) + float(datos[-1])            
-            self.expires = time.strftime('%Y-%m-%d %H:%M:%S', 
-                                         time.gmtime(self.hora))
-            self.datoscliente = {'address': self.client_address[0], 'expires': self.expires}
-            self.misdatos[datos[1].split(':')[-1]] = self.datoscliente
-            if int(datos[-1]) == 0:
-                del self.misdatos[datos[1].split(':')[-1]]     
-        self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
-        self.time_out()
-        self.register2json()
-        print (self.misdatos)
+                self.wfile.write(b"SIP/2.0 400 Bad Request\r\n")
 
 
 if __name__ == "__main__":
-    serv = socketserver.UDPServer((SERVER, PORT), EchoHandler)
+    serv = socketserver.UDPServer((SERVER, PORT), RegisterHandler)
     print("Listening...")
     try:
         serv.serve_forever()
