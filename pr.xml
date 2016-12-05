@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <server name="MiServidorBigBang" ip="localhost" puerto="5555"/>
+  <database path="userdata" passwdpath="passwords"/>
+  <log path="logpr.txt"/>
+</config>

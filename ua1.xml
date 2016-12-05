@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <account username="leonard@bigbang.org" passwd="sheldon"/>
+  <uaserver ip="localhost" puerto="5040"/>
+  <rtpaudio puerto="23032"/>
+  <regproxy ip="localhost" puerto="5555"/>
+  <log path="log1.txt"/>
+  <audio path="cancion.mp3"/>
+</config>

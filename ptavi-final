@@ -1,0 +1,48 @@
+PRACTICA FINAL PTAVI:
+
+    - p4 + p6 + PROXY (SIP) + SDP
+    - UAC y UAS comparten la configuración: trabajan con misma información (fichero XML) --> p2 leo fichero XML
+        $python3 program.py config.xml
+    - Fichero LOG: cualquier cosa que se envie o reciba se imprime en el log (paquetes de puertos e IPs) --> UAC / UAS / PROXY
+        formato definido
+    - 2 capturas
+    
+ 1. SIP:
+    - Metodos: REGISTER, ACK, INVITE, BYE --
+    - Respuesta: 100, 180..
+    - SERVIDOR REGISTRAR: config xml --
+        -- guardo en json
+ 
+ 2. Mensaje LOG:
+    - Mensajes de acciones de los UA guardads en fichero
+    
+ 3. SDP:
+    - CABECERA:
+        -- content-type
+    - CUERPO:
+        -- PARAMETROS OBLIGATORIOS: v / o / s / t / m
+ 
+ 4. RTP:
+    - mp32rtp
+        ./mp32rtp -i direccionIP -p puerto < cancion.mp3
+    - NO PASA POR EL PROXY
+    - Puerto RTP --> obtengo de SDP
+ 
+ 5. CONTRASEÑA:
+    - nonce --> proxy
+        -- nonce que yo quiero --> puede ser funcion random
+    - passwd --> uaclient
+    - passwd + nonce = RESPONSE --> f(passwd, nonce) donde ambos atributos son publicos
+        -- funcion hash --> f(passwd, nonce)
+        -- update --> "suma" // mezcla los valores
+            hashlib
+                import hashlib
+                h = hashlib.new('passwd')
+                h.update (b"nonce") --> lo saco del paquete que recibo
+                h.hexdigest()
+              ---------
+                import hashlib
+                h = hashlib.sha1()
+                h.update(b'passwd')
+                h.update(bytes(nonce, 'utf-8'))
+                h.digest()
