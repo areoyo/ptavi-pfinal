@@ -68,7 +68,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         h.update(bytes(data["account_passwd"], 'utf-8'))
         h.update(bytes(nonce, 'utf-8'))
         LINE = 'REGISTER sip:' + SIP + ' SIP/2.0\r\n' + 'Expires: ' + OPCION + '\r\n'
-        LINE += 'Authorization: Digest response = {}'.format(h.hexdigest())
+        LINE += 'Authorization: Digest response= {}'.format(h.hexdigest())
         print("Enviando:", LINE, '\r\n')
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
 
