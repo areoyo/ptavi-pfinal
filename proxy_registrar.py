@@ -88,8 +88,10 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                             if dat_nonce == response:
                                 register = True
                                 print ('REGISTRO USUARIO')
-                            else:
-                                self.wfile.write(b"SIP/2.0 404 User Not Found\r\n")
+                        else:
+                            register = False
+                            
+                    print (str(register))
                     if register == True:
                         self.json2registered()
                         self.hora = float(time.time()) + float(datos[4])    ##### ME DA LA HORA CAMBIADA; UNA HORA MENOS    
@@ -103,11 +105,13 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                         #self.time_out()
                         self.register2json()
                         print (self.misdatos)
+                    elif register == False:
+                        print ("Entro")
+                        self.wfile.write(b"SIP/2.0 404 User Not Found\r\n")
 
                 else:
                     self.wfile.write(b"SIP/2.0 401 Unauthorized\r\n")
                     self.wfile.write(b'WWW Authenticare: Digest nonce: ' + bytes(nonce, 'utf-8') + b'\r\n')
-                    register = False
                     
                     
             elif datos[0] == "INVITE":

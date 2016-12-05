@@ -71,5 +71,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         LINE += 'Authorization: Digest response= {}'.format(h.hexdigest())
         print("Enviando:", LINE, '\r\n')
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+        
+        dato = my_socket.recv(1024)
+        datos = dato.decode('utf-8').split()
+        print(dato.decode('utf-8'))
 
 print("Socket terminado.")
