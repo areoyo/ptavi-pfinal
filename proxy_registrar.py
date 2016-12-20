@@ -34,6 +34,8 @@ print(data)
 SERVER = data["server_ip"]
 PORT = int(data["server_puerto"])
 fich = open(data['database_passwdpath'], 'r')
+base_datos = open(data['database_path'], 'r')
+base = base_datos.readLines()
 lineas = fich.readlines()
 nonce = '654578'
 
@@ -51,14 +53,27 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
         json.dump(self.misdatos, open(data['database_path'], 'w'))
         
     """
-    COMPRUEBA SI HAY FICHERO Y SI LO HAY LEE SU CONTENIDO Y LO USA LISTA DE USUARIO
+    COMPRUEBA SI HAY FICHERO, LEE SU CONTENIDO Y LO USA LISTA DE USUARIO
     """
     def json2registered(self):
         try:
-            with open(data['database_path']) as client_file:
+            with base_datos as client_file:
                 self.misdatos = json.load (client_file)
         except:
             self.register2json()
+   
+    """
+    CUANDO PASA EL TIEMPO DE EXPIRACION --> BORRO CLIENTE
+    """ 
+    def delete(self):
+        tmpList = []
+        for cliente in self.misdatos:
+            hora_e = int(self.misdatos[cliente][-1])
+            hora = time.time()
+            if hora_e < hora:
+                tmpList.append(cliente)
+            for client in tmpList:
+                del self.misdatos[client]
 
     def handle(self):
         # Escribe dirección y puerto del cliente (de tupla client_address)
@@ -78,6 +93,7 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                 if datos[5] == 'Authorization:':
                     response = datos[-1]                 
                     user = datos[1].split(':')[1]
+                    port = datos[1].split(':')[-1]
                     for line in lineas:
                         if line.split()[0] == user:
                             dat_passwd = line.split()[-1]
@@ -91,39 +107,45 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                         else:
                             register = False
                             
-                    print (str(register))
                     if register == True:
                         self.json2registered()
-                        self.hora = float(time.time()) + float(datos[4])    ##### ME DA LA HORA CAMBIADA; UNA HORA MENOS    
-                        self.expires = time.strftime('%Y-%m-%d %H:%M:%S', 
-                                                     time.gmtime(self.hora))
-                        self.datoscliente = {'address': self.client_address[0], 'expires': self.expires}
-                        self.misdatos[datos[1].split(':')[1]] = self.datoscliente
+                        self.hora = float(time.time()) + float(datos[4])
+                        
+                        #self.expires = time.strftime('%Y-%m-%d %H:%M:%S', 
+                                                     #time.gmtime(self.hora))
+                                                     
+                        self.datoscliente = [self.client_address[0], port, \
+                                             time.time(), self.hora]
+                        self.misdatos[user] = self.datoscliente
                         if int(datos[4]) == 0:
-                            del self.misdatos[datos[1].split(':')[4]]     
+                            del self.misdatos[datos[1].split(':')[4]] 
                         self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
-                        #self.time_out()
+                        self.delete()
                         self.register2json()
+                        
                         print (self.misdatos)
+                        
                     elif register == False:
-                        print ("Entro")
                         self.wfile.write(b"SIP/2.0 404 User Not Found\r\n")
 
                 else:
                     self.wfile.write(b"SIP/2.0 401 Unauthorized\r\n")
-                    self.wfile.write(b'WWW Authenticare: Digest nonce: ' + bytes(nonce, 'utf-8') + b'\r\n')
-                    
-                    
+                    self.wfile.write(b'WWW Authenticare: Digest nonce: ' + \
+                                     bytes(nonce, 'utf-8') + b'\r\n')
+                                        
             elif datos[0] == "INVITE":
-                self.wfile.write(b"SIP/2.0 100 Trying" + b"\r\n")
-                self.wfile.write(b"SIP/2.0 180 Ring" + b"\r\n")
-                LINE = 'SIP/2.0 200 OK\r\n'
-                LINE += 'Content-Type: application/sdp' + '\r\n\r\n' 
-                LINE += 'v = 0\r\n' 
-                LINE += 'o = {} {}\r\n'.format(datos[12], datos[13])
-                LINE += 's = ' + data['server_name'] + '\r\n'
-                LINE += 't = 0\r\n'
-                LINE += 'm = audio {} RTP\r\n'.format(datos[-2])
+                user = datos[1].split(':')[1]
+                for line in lineas:
+                    if misdatos == user:
+                        # ENVIO DATOS
+                        # BUSCO EN SMISDATOS SI ESTA EL USUARIO, SACO PUERTO Y DIRECCION Y COPIO PEGO INFORMACION
+                        data['database_path']) --> base_datos // base
+                        
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) \
+                        as my_socket:
+                        my_socket.connect((SERVER, PORT))
+                        
+                            
                 
                 self.wfile.write(bytes(LINE,'utf-8'))
             elif datos[0] == "ACK":
@@ -132,7 +154,7 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                 os.system(aEjecutar)
                 
             elif datos[0] == "BYE":
-                self.wfile.write(b"\r\n" + b"SIP/2.0 200 OK\r\n")
+                self.wfile.write(b"SIP/2.0 200 OK\r\n")
                 
             elif datos[0] != "INVITE" or "BYE" or "ACK":
                 self.wfile.write(b"SIP/2.0 405 Method Not Allowed\r\n")

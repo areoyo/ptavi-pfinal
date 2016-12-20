@@ -53,7 +53,8 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 LINE = 'SIP/2.0 200 OK\r\n'
                 LINE += 'Content-Type: application/sdp' + '\r\n\r\n' 
                 LINE += 'v = 0\r\n' 
-                LINE += 'o = {} {}\r\n'.format(data["account_username"], data['uaserver_ip'])
+                LINE += 'o = {} {}\r\n'.format(data["account_username"], \
+                         data['uaserver_ip'])
                 LINE += 's = MiSesion\r\n'
                 LINE += 't = 0\r\n'
                 LINE += 'm = audio {} RTP\r\n'.format(data['rtpaudio_puerto'])

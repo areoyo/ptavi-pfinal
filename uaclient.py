@@ -47,15 +47,16 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         LINE = 'INVITE sip: {} SIP/2.0\r\n'.format(OPCION)
         LINE += 'Content-Type: application/sdp' + '\r\n\r\n' 
         LINE += 'v = 0\r\n' 
-        LINE += 'o = {} {}\r\n'.format(data["account_username"], data['uaserver_ip'])
+        LINE += 'o = {} {}\r\n'.format(data["account_username"], \
+                 data['uaserver_ip'])
         LINE += 's = MiSesion\r\n'
         LINE += 't = 0\r\n'
         LINE += 'm = audio {} RTP'.format(data['rtpaudio_puerto'])
         
     elif METODO == 'BYE': 
-        LINE = 'BYE sip: {} SIP/2.0\r\n'.format(OPCION)
+        LINE = 'BYE sip: {} SIP/2.0'.format(OPCION)
         
-    print("Enviando:", LINE)
+    print("Enviando:", LINE, '\r\n')
     my_socket.send(bytes(LINE, 'utf-8') + b'\r\n') ##
     
     dato = my_socket.recv(1024)
@@ -67,7 +68,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         h = hashlib.sha1()
         h.update(bytes(data["account_passwd"], 'utf-8'))
         h.update(bytes(nonce, 'utf-8'))
-        LINE = 'REGISTER sip:' + SIP + ' SIP/2.0\r\n' + 'Expires: ' + OPCION + '\r\n'
+        LINE = 'REGISTER sip:' + SIP + ' SIP/2.0\r\nExpires: ' + OPCION + '\r\n'
         LINE += 'Authorization: Digest response= {}'.format(h.hexdigest())
         print("Enviando:", LINE, '\r\n')
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
