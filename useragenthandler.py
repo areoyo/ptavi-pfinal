@@ -26,9 +26,8 @@ class UserAgentHandler(ContentHandler):
         Método que se llama cuando se abre una etiqueta
         """
         if name in self.attrs:
-            for atributo in self.attrs[name]:
-                self.misdatos[name+'_'+atributo] = str(atributes.get(atributo,\
-                                                        ""))
+            for atr in self.attrs[name]:
+                self.misdatos[name+'_'+atr] = str(atributes.get(atr,""))
 
     def get_tags(self):
         """

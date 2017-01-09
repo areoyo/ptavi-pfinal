@@ -46,6 +46,10 @@ class EchoHandler(socketserver.DatagramRequestHandler):
             # Si no hay más líneas salimos del bucle infinito
             if not line:
                 break
+                
+            # METODO LOG --> RECEIVED FROM
+                
+   # EL SERVIDOR SOLO RECIBE Y RESPONDE A LO QUE RECIBE:   AL 100 180 200 --> RTP (DIRECTO AL UA2)
 
             if datos[0] == "INVITE":
                 self.wfile.write(b"SIP/2.0 100 Trying" + b"\r\n")
@@ -59,16 +63,25 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 LINE += 't = 0\r\n'
                 LINE += 'm = audio {} RTP\r\n'.format(data['rtpaudio_puerto'])
                 self.wfile.write(bytes(LINE,'utf-8'))
-            if datos[0] == "ACK":
-                aEjecutar = "./mp32rtp -i " + IP + " -p 23032 < " + FICH
-                print("Vamos a ejecutar ", aEjecutar)
-                os.system(aEjecutar)
-            if datos[0] == "BYE":
-                self.wfile.write(b"\r\n" + b"SIP/2.0 200 OK" + b"\r\n")
+                # METODO LOG --> SENT TO
+                
+            if datos[2] == 'Trying' and datos[8] == 'OK':
+                """
+                Enviamos RTP
+                """
+                print("RTP")
+                # aEjecutar = "./mp32rtp -i " + IP + " -p 23032 < " + FICH
+                # print("Vamos a ejecutar ", aEjecutar)
+                # os.system(aEjecutar)
+                print("FIN DE TRANSMISION RTP")
+                # METODO LOG --> AUDIO TRANSFER
+            
             elif datos[0] != "INVITE" or "BYE" or "ACK":
                 self.wfile.write(b"SIP/2.0 405 Method Not Allowed" + b"\r\n")
+                # METODO LOG --> SENT TO
             else:
                 self.wfile.write(b"SIP/2.0 400 Bad Request" + b"\r\n")
+                # METODO LOG --> SENT TO
 
 if __name__ == "__main__":
     serv = socketserver.UDPServer((SERVER, PORT), EchoHandler)

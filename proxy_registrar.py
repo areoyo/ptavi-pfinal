@@ -85,7 +85,9 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
             # Si no hay más líneas salimos del bucle infinito
             if not line:
                 break
-                
+            
+            # METODO LOG --> STARTING
+            # METODO LOG --> RECEIVED FROM 
             """
              CODIGOS DE RESPUESTA
             """                
@@ -109,11 +111,7 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                             
                     if register == True:
                         self.json2registered()
-                        self.hora = float(time.time()) + float(datos[4])
-                        
-                        #self.expires = time.strftime('%Y-%m-%d %H:%M:%S', 
-                                                     #time.gmtime(self.hora))
-                                                     
+                        self.hora = float(time.time()) + float(datos[4])                                                     
                         self.datoscliente = [self.client_address[0], port, \
                                              time.time(), self.hora]
                         self.misdatos[user] = self.datoscliente
@@ -132,36 +130,39 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                     self.wfile.write(b"SIP/2.0 401 Unauthorized\r\n")
                     self.wfile.write(b'WWW Authenticare: Digest nonce: ' + \
                                      bytes(nonce, 'utf-8') + b'\r\n')
+                    # METODO LOG --> SENT TO
                                         
-            elif datos[0] == "INVITE":
+            elif datos[0] == "INVITE" or "ACK" or "BYE":
                 user = datos[1].split(':')[1]
                 for line in lineas:
-                    if misdatos == user:
-                        # ENVIO DATOS
-                        # BUSCO EN SMISDATOS SI ESTA EL USUARIO, SACO PUERTO Y DIRECCION Y COPIO PEGO INFORMACION
-                        data['database_path']) --> base_datos // base
-                        
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) \
-                        as my_socket:
-                        my_socket.connect((SERVER, PORT))
-                        
+                    if user in self.misdatos.keys():
+                        newport = int(self.misdatos[user][1])
+                        newIP = self.misdatos[user][0]
+                        print(user, newport, newIP)
+                        #misdatos[line] == user:
+                        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) \
+                            as my_socket:
+                            my_socket.setsockopt(socket.SOL_SOCKET,
+                                                 socket.SO_REUSEADDR, 1) ##
+                            my_socket.connect((newIP, newport))
                             
-                
-                self.wfile.write(bytes(LINE,'utf-8'))
-            elif datos[0] == "ACK":
-                aEjecutar = "./mp32rtp -i " + IP + " -p 23032 < " + FICH
-                print("Vamos a ejecutar ", aEjecutar)
-                os.system(aEjecutar)
-                
-            elif datos[0] == "BYE":
-                self.wfile.write(b"SIP/2.0 200 OK\r\n")
-                
+                            print("Enviando:", LINE, '\r\n')
+                            my_socket.send(bytes(line, 'utf-8') + b'\r\n') ##
+                            # METODO LOG  --> SENT TO
+                            
+                            dato = my_socket.recv(1024)
+                            datos = dato.decode('utf-8').split() ##
+                            print("Recibido: ", dato.decode('utf-8'), '\r\n') ##
+                            # METODO LOG --> RECEIVED FROM
+                        self.wfile.write(dato)
+                        # METODO LOG --> SENT TO
+                    else:
+                        self.wfile.write(b"SIP/2.0 404 User Not Found\r\n")
+                        # METODO LOG --> SENT TO
             elif datos[0] != "INVITE" or "BYE" or "ACK":
-                self.wfile.write(b"SIP/2.0 405 Method Not Allowed\r\n")
-                
+                self.wfile.write(b"SIP/2.0 405 Method Not Allowed\r\n") 
             else:
                 self.wfile.write(b"SIP/2.0 400 Bad Request\r\n")
-
 
 if __name__ == "__main__":
     serv = socketserver.UDPServer((SERVER, PORT), RegisterHandler)
@@ -169,3 +170,4 @@ if __name__ == "__main__":
         serv.serve_forever()
     except KeyboardInterrupt:
         print("Finalizado servidor")
+        # METODO LOG --> FINISHING

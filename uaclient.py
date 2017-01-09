@@ -33,15 +33,47 @@ print(data)
 SERVER = data["regproxy_ip"]
 PORT = int(data["regproxy_puerto"])
 SIP = data["account_username"]+':'+data["uaserver_puerto"]
+fich_log = data["log_path"]
+
+"""
+FICHERO LOG
+"""
+
+def log (self, opcion, accion):
+    fich = open (fich_log, 'a')
+    self.hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
+    if opcion != 'empty':
+        if accion == 'snd':
+            status = ' Sent to '
+        elif accion == 'rcv':
+            status = ' Received from '
+        fich.write(self.hora + status + opcion.replace('\r\n',' ')+ '\r\n')
+    else:
+        if accion == 'start':
+            status = ' Starting...'
+        elif accion == 'finish':
+            status = ' Finishing.'
+        fich.write(self.hora + status + '\r\n')    
+        elif accion == 'error':
+            status == 'Error: No server listening at ' + IP + ' port ' + port
+        fich.write(self.hora + status + '\r\n')
+ 
 
 """
  COMIENZA CONEXION
-"""
+"""       
 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
     my_socket.connect((SERVER, PORT))
+    
+    # METODO LOG --> STARTING
 
     if METODO == 'REGISTER':
-        LINE = 'REGISTER sip: {} SIP/2.0\r\nExpires: {}\r\n'.format(SIP, OPCION)
+        #try:
+        LINE = 'REGISTER sip:{} SIP/2.0\r\nExpires: {}\r\n'.format(SIP, OPCION)
+        
+        # LLAMO EXCEPCION SOCKET.ERROR
+        # EXCEPT SOCKET.ERROR:
+            # METODO LOG --> ERROR
         
     elif METODO == 'INVITE':
         LINE = 'INVITE sip: {} SIP/2.0\r\n'.format(OPCION)
@@ -52,17 +84,31 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         LINE += 's = MiSesion\r\n'
         LINE += 't = 0\r\n'
         LINE += 'm = audio {} RTP'.format(data['rtpaudio_puerto'])
+        # LLAMO EXCEPCION SOCKET.ERROR
+        # EXCEPT SOCKET.ERROR:
+            # METODO LOG --> ERROR
         
     elif METODO == 'BYE': 
         LINE = 'BYE sip: {} SIP/2.0'.format(OPCION)
+        # LLAMO EXCEPCION SOCKET.ERROR
+        # EXCEPT SOCKET.ERROR:
+            # METODO LOG --> ERROR
         
     print("Enviando:", LINE, '\r\n')
     my_socket.send(bytes(LINE, 'utf-8') + b'\r\n') ##
+    # METODO LOG  --> SENT TO
     
     dato = my_socket.recv(1024)
     datos = dato.decode('utf-8').split()
-    print(dato.decode('utf-8'))
-    
+    print("Recibido: ", dato.decode('utf-8'), '\r\n')
+    # METODO LOG --> RECEIVED FROM
+        
+    if datos[2] == 'Trying' and datos[8] == 'OK':
+        METODO = 'ACK'
+        LINE = METODO + " sip:" + LOGIN + "@" + SERVER + " SIP/2.0\r\n"
+        my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+        # METODO LOG --> SENT TO
+        
     if datos[1] == '401':
         nonce = datos[7]
         h = hashlib.sha1()
@@ -72,9 +118,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         LINE += 'Authorization: Digest response= {}'.format(h.hexdigest())
         print("Enviando:", LINE, '\r\n')
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+        # METODO LOG --> SENT TO
         
         dato = my_socket.recv(1024)
         datos = dato.decode('utf-8').split()
-        print(dato.decode('utf-8'))
+        print("Recibido: ", dato.decode('utf-8'), '\r\n')
+        # METODO LOG --> RECEIVED FROM
 
+# METODO LOG --> FINISHING
 print("Socket terminado.")
