@@ -66,6 +66,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
     my_socket.connect((SERVER, PORT))
     
     # METODO LOG --> STARTING
+    log('empty','start')
 
     if METODO == 'REGISTER':
         #try:
@@ -97,17 +98,20 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
     print("Enviando:", LINE, '\r\n')
     my_socket.send(bytes(LINE, 'utf-8') + b'\r\n') ##
     # METODO LOG  --> SENT TO
+    log(LINE,'snd')
     
     dato = my_socket.recv(1024)
     datos = dato.decode('utf-8').split()
     print("Recibido: ", dato.decode('utf-8'), '\r\n')
     # METODO LOG --> RECEIVED FROM
+    log(dato.decode('utf-8'),'rcv')
         
     if datos[2] == 'Trying' and datos[8] == 'OK':
         METODO = 'ACK'
         LINE = METODO + " sip:" + LOGIN + "@" + SERVER + " SIP/2.0\r\n"
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
         # METODO LOG --> SENT TO
+        log(LINE,'snd')
         
     if datos[1] == '401':
         nonce = datos[7]
@@ -119,11 +123,14 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         print("Enviando:", LINE, '\r\n')
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
         # METODO LOG --> SENT TO
+        log(LINE,'snd')
         
         dato = my_socket.recv(1024)
         datos = dato.decode('utf-8').split()
         print("Recibido: ", dato.decode('utf-8'), '\r\n')
         # METODO LOG --> RECEIVED FROM
+        log(dato.decode('utf-8'),'rcv')
 
 # METODO LOG --> FINISHING
+log('empty','finish')
 print("Socket terminado.")
