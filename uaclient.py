@@ -3,6 +3,7 @@
 
 import sys
 import socket
+import os
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 import useragenthandler
@@ -28,13 +29,15 @@ parser.setContentHandler(kHandler)
 parser.parse(CONFIG)
 data = kHandler.get_tags()
 
-print('DATOS DICCIONARIO:')
-print(data)
+print('DATOS DICCIONARIO:') ##
+print(data) ##
 
 SERVER = data["regproxy_ip"]
 PORT = int(data["regproxy_puerto"])
 SIP = data["account_username"]+':'+data["uaserver_puerto"]
 fich_log = data["log_path"]
+USER = data["account_username"]
+AUDIO = data["audio_path"]
 
 """
 FICHERO LOG
@@ -55,7 +58,7 @@ def log (opcion, accion):
         elif accion == 'finish':
             status = ' Finishing.'  
         elif accion == 'error':
-            status == SERVER + ' port ' + port
+            status == SERVER + ' port ' + PORT
         fich.write(hora + 'Error: No server listening at ' + status + '\r\n')
  
 """
@@ -74,7 +77,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         
     elif METODO == 'INVITE':
         try:
-            LINE = 'INVITE sip: {} SIP/2.0\r\n'.format(OPCION)
+            LINE = 'INVITE sip:{} SIP/2.0\r\n'.format(OPCION)
             LINE += 'Content-Type: application/sdp' + '\r\n\r\n' 
             LINE += 'v = 0\r\n' 
             LINE += 'o = {} {}\r\n'.format(data["account_username"], \
@@ -100,13 +103,20 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
     print("Recibido: ", dato.decode('utf-8')) ##
     log(dato.decode('utf-8'),'rcv')
         
-    if datos[2] == 'Trying' and datos[8] == 'OK':
+    if datos[1] == '100' and datos[7] == '200':
         METODO = 'ACK'
-        LINE = METODO + " sip:" + LOGIN + "@" + SERVER + " SIP/2.0\r\n"
+        LINE = METODO + " sip:" + datos[16] + " SIP/2.0\r\n"
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+        print("Enviando:", LINE, '\r\n') ##
         log(LINE,'snd')
+        print("RTP")
+        aEjecutar = "./mp32rtp -i " + datos[17] + " -p 23032 < " + AUDIO
+        print("Vamos a ejecutar ", aEjecutar)
+        os.system(aEjecutar)
+        print("FIN DE TRANSMISION RTP")
+        # METODO LOG --> AUDIO TRANSFER
         
-    if datos[1] == '401':
+    elif datos[1] == '401':
         nonce = datos[7]
         h = hashlib.sha1()
         h.update(bytes(data["account_passwd"], 'utf-8'))
@@ -120,9 +130,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         dato = my_socket.recv(1024)
         datos = dato.decode('utf-8').split()
         print("Recibido: ", dato.decode('utf-8')) ##
-        # METODO LOG --> RECEIVED FROM
         log(dato.decode('utf-8'),'rcv')
 
-# METODO LOG --> FINISHING
 log('empty','finish')
 print("Socket terminado.")

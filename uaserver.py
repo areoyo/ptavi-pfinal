@@ -3,11 +3,13 @@
 
 import sys
 import socketserver
+import socket
 import os
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 import useragenthandler
 import hashlib
+import time
 
 """
  COMPROBACION DE LA ENTRADA
@@ -15,7 +17,6 @@ import hashlib
 if len(sys.argv) != 2:
     sys.exit("Usage: python3 uaserver.py config")
 _, CONFIG = sys.argv
-
 
 """
  INICIALIZA EL HANDLER
@@ -29,13 +30,36 @@ data = kHandler.get_tags()
 print('DATOS DICCIONARIO:')
 print(data)
 
-SERVER = data["regproxy_ip"]
-PORT = int(data["regproxy_puerto"])
+SERVER = data["uaserver_ip"]
+PORT = int(data["uaserver_puerto"])
 SIP = data["account_username"]+':'+data["uaserver_puerto"]
+fich_log = data["log_path"]
+AUDIO = data["audio_path"]
 
+"""
+FICHERO LOG
+"""
+def log (opcion, accion):
+    print('LOG') ##
+    fich = open (fich_log, 'a')
+    hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
+    if opcion != 'empty':
+        if accion == 'snd':
+            status = ' Sent to '
+        elif accion == 'rcv':
+            status = ' Received from '
+        fich.write(hora + status + opcion.replace('\r\n',' ')+ '\r\n')
+    else:
+        if accion == 'start':
+            status = ' Starting...'
+        elif accion == 'finish':
+            status = ' Finishing.'  
+        elif accion == 'error':
+            status == SERVER + ' port ' + PORT
+        fich.write(hora + 'Error: No server listening at ' + status + '\r\n')
 
 class EchoHandler(socketserver.DatagramRequestHandler):
-
+    rtp = []
     def handle(self):
         # Escribe dirección y puerto del cliente (de tupla client_address)
         while 1:
@@ -46,14 +70,11 @@ class EchoHandler(socketserver.DatagramRequestHandler):
             # Si no hay más líneas salimos del bucle infinito
             if not line:
                 break
-                
-            # METODO LOG --> RECEIVED FROM
-                
-   # EL SERVIDOR SOLO RECIBE Y RESPONDE A LO QUE RECIBE:   AL 100 180 200 --> RTP (DIRECTO AL UA2)
-
+            log(line.decode('utf-8'),'rcv')
+            
             if datos[0] == "INVITE":
                 self.wfile.write(b"SIP/2.0 100 Trying" + b"\r\n")
-                self.wfile.write(b"SIP/2.0 180 Ring" + b"\r\n")
+                self.wfile.write(b"SIP/2.0 180 Ringing" + b"\r\n")
                 LINE = 'SIP/2.0 200 OK\r\n'
                 LINE += 'Content-Type: application/sdp' + '\r\n\r\n' 
                 LINE += 'v = 0\r\n' 
@@ -63,26 +84,30 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 LINE += 't = 0\r\n'
                 LINE += 'm = audio {} RTP\r\n'.format(data['rtpaudio_puerto'])
                 self.wfile.write(bytes(LINE,'utf-8'))
-                # METODO LOG --> SENT TO
+                log(LINE,'snd')
+                self.rtp.append(datos[17])
                 
-            if datos[2] == 'Trying' and datos[8] == 'OK':
+            elif datos[0] == 'ACK':
                 """
                 Enviamos RTP
                 """
                 print("RTP")
-                # aEjecutar = "./mp32rtp -i " + IP + " -p 23032 < " + FICH
-                # print("Vamos a ejecutar ", aEjecutar)
-                # os.system(aEjecutar)
+                aEjecutar = "./mp32rtp -i " + self.rtp[0] + " -p 23032 < " + AUDIO
+                print("Vamos a ejecutar ", aEjecutar)
+                os.system(aEjecutar)
                 print("FIN DE TRANSMISION RTP")
+                del self.rtp
                 # METODO LOG --> AUDIO TRANSFER
             
             elif datos[0] != "INVITE" or "BYE" or "ACK":
-                self.wfile.write(b"SIP/2.0 405 Method Not Allowed" + b"\r\n")
-                # METODO LOG --> SENT TO
+                LINE = "SIP/2.0 405 Method Not Allowed\r\n"
+                self.wfile.write(bytes(LINE))
+                log(LINE,'snd')
             else:
-                self.wfile.write(b"SIP/2.0 400 Bad Request" + b"\r\n")
-                # METODO LOG --> SENT TO
-
+                LINE = "SIP/2.0 400 Bad Request\r\n"
+                self.wfile.write(bytes(LINE))
+                log(LINE,'snd')
+                
 if __name__ == "__main__":
     serv = socketserver.UDPServer((SERVER, PORT), EchoHandler)
     print("Listening...")
@@ -90,3 +115,4 @@ if __name__ == "__main__":
         serv.serve_forever()
     except KeyboardInterrupt:
         print("Finalizado servidor")
+        log('empty','finish')

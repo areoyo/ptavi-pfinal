@@ -3,7 +3,7 @@
 
 import sys
 import socketserver
-import os
+import socket
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 import useragenthandler
@@ -42,7 +42,7 @@ fich_log = data["log_path"]
 FICHERO LOG
 """
 def log (opcion, accion):
-    print('LOG') ##
+    #print('LOG') ##
     fich = open (fich_log, 'a')
     hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
     if opcion != 'empty':
@@ -118,9 +118,9 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                     response = datos[-1]                 
                     user = datos[1].split(':')[1]
                     port = datos[1].split(':')[-1]
-                    for line in lineas:
-                        if line.split()[0] == user:
-                            dat_passwd = line.split()[-1]
+                    for linea in lineas:
+                        if linea.split()[0] == user:
+                            dat_passwd = linea.split()[-1]
                             h = hashlib.sha1()
                             h.update(bytes(dat_passwd, 'utf-8'))
                             h.update(bytes(nonce, 'utf-8'))
@@ -141,46 +141,48 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                                 print ('DESPUES DE DEL', self.misdatos) ##
                             else:
                                 msg = "SIP/2.0 404 User Not Found\r\n"
-                                self.wfile.write(bytes(msg, 'utf-8'))
+                                self.wfile.write(msg)
                                 log(msg,'snd')
-
                 else:
-                    msg = "SIP/2.0 404 User Not Found\r\n"
-                    msg += "WWW Authenticate: Digest nonce: " + nonce + '\r\n'
+                    msg = "SIP/2.0 401 Unauthorized\r\n"
+                    msg += "WWW Authenticate: Digest nonce= " + nonce + '\r\n'
                     self.wfile.write(bytes(msg, 'utf-8'))
                     log(msg,'snd')
                                         
             elif datos[0] == "INVITE" or "ACK" or "BYE":
+                self.json2registered()
                 user = datos[1].split(':')[1]
-                for line in lineas:
-                    if user in self.misdatos.keys():
-                        newport = int(self.misdatos[user][1])
-                        newIP = self.misdatos[user][0]
-                        print(user, newport, newIP)
-                        #misdatos[line] == user:
-                        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) \
-                            as my_socket:
-                            my_socket.setsockopt(socket.SOL_SOCKET,
-                                                 socket.SO_REUSEADDR, 1) ##
-                            my_socket.connect((newIP, newport))
-                            
-                            print("Enviando:", LINE, '\r\n')
-                            my_socket.send(bytes(line, 'utf-8') + b'\r\n') ##
-                            # METODO LOG  --> SENT TO
-                            
+                if user in self.misdatos.keys():
+                    newport = int(self.misdatos[user][1])
+                    newIP = self.misdatos[user][0]
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) \
+                        as my_socket:
+                        my_socket.setsockopt(socket.SOL_SOCKET, 
+                                             socket.SO_REUSEADDR, 1)
+                        my_socket.connect((newIP, newport))
+                        print("Enviando:", line)
+                        my_socket.send(line) ##
+                        log(line.decode('utf-8'),'snd')
+                        if datos [0] != 'ACK':
                             datonew = my_socket.recv(1024)
                             datos = datonew.decode('utf-8').split() ##
-                            print("Recibido: ", dato.decode('utf-8'), '\r\n') ##
-                            # METODO LOG --> RECEIVED FROM
-                        self.wfile.write(datonew)
-                        # METODO LOG --> SENT TO
-                    else:
-                        self.wfile.write(b"SIP/2.0 404 User Not Found\r\n")
-                        # METODO LOG --> SENT TO
+                            print("Recibido: ", datonew.decode('utf-8'), '\r\n')##
+                            log(datonew.decode('utf-8'),'rcv')
+                            self.wfile.write(datonew)
+                            log(datonew.decode('utf-8'),'snd')
+                else:
+                    msg = "SIP/2.0 404 User Not Found\r\n"
+                    self.wfile.write(bytes(msg, 'utf-8'))
+                    log(msg,'snd')
+                
             elif datos[0] != "INVITE" or "BYE" or "ACK":
-                self.wfile.write(b"SIP/2.0 405 Method Not Allowed\r\n") 
+                LINE = "SIP/2.0 405 Method Not Allowed\r\n"
+                self.wfile.write(bytes(LINE))
+                log(LINE,'snd')
             else:
-                self.wfile.write(b"SIP/2.0 400 Bad Request\r\n")
+                LINE = "SIP/2.0 400 Bad Request\r\n"
+                self.wfile.write(bytes(LINE))
+                log(LINE,'snd')
 
 if __name__ == "__main__":
     serv = socketserver.UDPServer((SERVER, PORT), RegisterHandler)
@@ -188,4 +190,4 @@ if __name__ == "__main__":
         serv.serve_forever()
     except KeyboardInterrupt:
         print("Finalizado servidor")
-        # METODO LOG --> FINISHING
+        log('empty','finish')
