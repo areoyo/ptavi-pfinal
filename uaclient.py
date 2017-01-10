@@ -7,6 +7,7 @@ from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 import useragenthandler
 import hashlib
+import time
 
 """
  COMPROBACION DE LA ENTRADA
@@ -38,79 +39,71 @@ fich_log = data["log_path"]
 """
 FICHERO LOG
 """
-
-def log (self, opcion, accion):
+def log (opcion, accion):
+    print('LOG') ##
     fich = open (fich_log, 'a')
-    self.hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
+    hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
     if opcion != 'empty':
         if accion == 'snd':
             status = ' Sent to '
         elif accion == 'rcv':
             status = ' Received from '
-        fich.write(self.hora + status + opcion.replace('\r\n',' ')+ '\r\n')
+        fich.write(hora + status + opcion.replace('\r\n',' ')+ '\r\n')
     else:
         if accion == 'start':
             status = ' Starting...'
         elif accion == 'finish':
-            status = ' Finishing.'
-        fich.write(self.hora + status + '\r\n')    
+            status = ' Finishing.'  
         elif accion == 'error':
-            status == 'Error: No server listening at ' + IP + ' port ' + port
-        fich.write(self.hora + status + '\r\n')
+            status == SERVER + ' port ' + port
+        fich.write(hora + 'Error: No server listening at ' + status + '\r\n')
  
-
 """
  COMIENZA CONEXION
 """       
 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
     my_socket.connect((SERVER, PORT))
-    
-    # METODO LOG --> STARTING
+
     log('empty','start')
 
     if METODO == 'REGISTER':
-        #try:
-        LINE = 'REGISTER sip:{} SIP/2.0\r\nExpires: {}\r\n'.format(SIP, OPCION)
-        
-        # LLAMO EXCEPCION SOCKET.ERROR
-        # EXCEPT SOCKET.ERROR:
-            # METODO LOG --> ERROR
+        try:
+            LINE = 'REGISTER sip:{} SIP/2.0\r\nExpires: {}'.format(SIP, OPCION)
+        except socket.error:
+            log('empty','error')
         
     elif METODO == 'INVITE':
-        LINE = 'INVITE sip: {} SIP/2.0\r\n'.format(OPCION)
-        LINE += 'Content-Type: application/sdp' + '\r\n\r\n' 
-        LINE += 'v = 0\r\n' 
-        LINE += 'o = {} {}\r\n'.format(data["account_username"], \
-                 data['uaserver_ip'])
-        LINE += 's = MiSesion\r\n'
-        LINE += 't = 0\r\n'
-        LINE += 'm = audio {} RTP'.format(data['rtpaudio_puerto'])
-        # LLAMO EXCEPCION SOCKET.ERROR
-        # EXCEPT SOCKET.ERROR:
-            # METODO LOG --> ERROR
+        try:
+            LINE = 'INVITE sip: {} SIP/2.0\r\n'.format(OPCION)
+            LINE += 'Content-Type: application/sdp' + '\r\n\r\n' 
+            LINE += 'v = 0\r\n' 
+            LINE += 'o = {} {}\r\n'.format(data["account_username"], \
+                     data['uaserver_ip'])
+            LINE += 's = MiSesion\r\n'
+            LINE += 't = 0\r\n'
+            LINE += 'm = audio {} RTP'.format(data['rtpaudio_puerto'])
+        except socket.error:
+            log('empty','error')
         
     elif METODO == 'BYE': 
-        LINE = 'BYE sip: {} SIP/2.0'.format(OPCION)
-        # LLAMO EXCEPCION SOCKET.ERROR
-        # EXCEPT SOCKET.ERROR:
-            # METODO LOG --> ERROR
+        try:
+            LINE = 'BYE sip: {} SIP/2.0'.format(OPCION)
+        except socket.error:
+            log('empty','error')
         
-    print("Enviando:", LINE, '\r\n')
-    my_socket.send(bytes(LINE, 'utf-8') + b'\r\n') ##
-    # METODO LOG  --> SENT TO
+    print("Enviando:", LINE, '\r\n') ##
+    my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
     log(LINE,'snd')
     
     dato = my_socket.recv(1024)
     datos = dato.decode('utf-8').split()
-    print("Recibido: ", dato.decode('utf-8'), '\r\n')
-    # METODO LOG --> RECEIVED FROM
+    print("Recibido: ", dato.decode('utf-8')) ##
     log(dato.decode('utf-8'),'rcv')
         
     if datos[2] == 'Trying' and datos[8] == 'OK':
         METODO = 'ACK'
         LINE = METODO + " sip:" + LOGIN + "@" + SERVER + " SIP/2.0\r\n"
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
-        # METODO LOG --> SENT TO
         log(LINE,'snd')
         
     if datos[1] == '401':
@@ -120,14 +113,13 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         h.update(bytes(nonce, 'utf-8'))
         LINE = 'REGISTER sip:' + SIP + ' SIP/2.0\r\nExpires: ' + OPCION + '\r\n'
         LINE += 'Authorization: Digest response= {}'.format(h.hexdigest())
-        print("Enviando:", LINE, '\r\n')
+        print("Enviando:", LINE, '\r\n') ##
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
-        # METODO LOG --> SENT TO
         log(LINE,'snd')
         
         dato = my_socket.recv(1024)
         datos = dato.decode('utf-8').split()
-        print("Recibido: ", dato.decode('utf-8'), '\r\n')
+        print("Recibido: ", dato.decode('utf-8')) ##
         # METODO LOG --> RECEIVED FROM
         log(dato.decode('utf-8'),'rcv')
 
