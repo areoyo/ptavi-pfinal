@@ -28,16 +28,37 @@ parser.setContentHandler(kHandler)
 parser.parse(CONFIG)
 data = kHandler.get_tags()
 
-print('DATOS DICCIONARIO:')
-print(data)
+print('DATOS DICCIONARIO:') ##
+print(data) ##
 
 SERVER = data["server_ip"]
 PORT = int(data["server_puerto"])
 fich = open(data['database_passwdpath'], 'r')
-base_datos = open(data['database_path'], 'r')
-base = base_datos.readLines()
 lineas = fich.readlines()
 nonce = '654578'
+fich_log = data["log_path"]
+
+"""
+FICHERO LOG
+"""
+def log (opcion, accion):
+    print('LOG') ##
+    fich = open (fich_log, 'a')
+    hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
+    if opcion != 'empty':
+        if accion == 'snd':
+            status = ' Sent to '
+        elif accion == 'rcv':
+            status = ' Received from '
+        fich.write(hora + status + opcion.replace('\r\n',' ') + '\r\n')
+    else:
+        if accion == 'start':
+            status = ' Starting...'
+        elif accion == 'finish':
+            status = ' Finishing.'  
+        elif accion == 'error':
+            status ==' Error: No server listening at '+SERVER+ ' port ' + PORT
+        fich.write(hora  + status + '\r\n')
 
 """
  BASE DE DATOS DE USUARIOS REGISTRADOS
@@ -57,8 +78,8 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
     """
     def json2registered(self):
         try:
-            with base_datos as client_file:
-                self.misdatos = json.load (client_file)
+            with open(data['database_path']) as client_file:
+                self.misdatos = json.load(client_file)
         except:
             self.register2json()
    
@@ -68,12 +89,13 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
     def delete(self):
         tmpList = []
         for cliente in self.misdatos:
-            hora_e = int(self.misdatos[cliente][-1])
+            expires = int(self.misdatos[cliente][-1])
             hora = time.time()
-            if hora_e < hora:
+            if expires < hora:
                 tmpList.append(cliente)
-            for client in tmpList:
-                del self.misdatos[client]
+                expire_t = True
+        for client in tmpList:
+            del self.misdatos[client]
 
     def handle(self):
         # Escribe dirección y puerto del cliente (de tupla client_address)
@@ -86,13 +108,13 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
             if not line:
                 break
             
-            # METODO LOG --> STARTING
-            # METODO LOG --> RECEIVED FROM 
+            log('empty','start')
+            log(line.decode('utf-8'),'rcv')
             """
              CODIGOS DE RESPUESTA
             """                
             if datos[0] == 'REGISTER':
-                if datos[5] == 'Authorization:':
+                if 'Authorization:' in datos:
                     response = datos[-1]                 
                     user = datos[1].split(':')[1]
                     port = datos[1].split(':')[-1]
@@ -104,33 +126,29 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                             h.update(bytes(nonce, 'utf-8'))
                             dat_nonce = h.hexdigest()
                             if dat_nonce == response:
-                                register = True
-                                print ('REGISTRO USUARIO')
-                        else:
-                            register = False
-                            
-                    if register == True:
-                        self.json2registered()
-                        self.hora = float(time.time()) + float(datos[4])                                                     
-                        self.datoscliente = [self.client_address[0], port, \
-                                             time.time(), self.hora]
-                        self.misdatos[user] = self.datoscliente
-                        if int(datos[4]) == 0:
-                            del self.misdatos[datos[1].split(':')[4]] 
-                        self.wfile.write(b"SIP/2.0 200 OK\r\n\r\n")
-                        self.delete()
-                        self.register2json()
-                        
-                        print (self.misdatos)
-                        
-                    elif register == False:
-                        self.wfile.write(b"SIP/2.0 404 User Not Found\r\n")
+                                self.json2registered()
+                                self.hora = float(time.time())
+                                self.h_ex = float(time.time()) + float(datos[4])                                                
+                                self.datoscliente = [self.client_address[0], \
+                                                    port, self.hora, \
+                                                    self.h_ex]
+                                self.misdatos[user] = self.datoscliente
+                                if int(datos[4]) == 0:
+                                    del self.misdatos[datos[1].split(':')[1]] 
+                                self.wfile.write(b"SIP/2.0 200 OK\r\n")
+                                self.delete()
+                                self.register2json()                   
+                                print ('DESPUES DE DEL', self.misdatos) ##
+                            else:
+                                msg = "SIP/2.0 404 User Not Found\r\n"
+                                self.wfile.write(bytes(msg, 'utf-8'))
+                                log(msg,'snd')
 
                 else:
-                    self.wfile.write(b"SIP/2.0 401 Unauthorized\r\n")
-                    self.wfile.write(b'WWW Authenticare: Digest nonce: ' + \
-                                     bytes(nonce, 'utf-8') + b'\r\n')
-                    # METODO LOG --> SENT TO
+                    msg = "SIP/2.0 404 User Not Found\r\n"
+                    msg += "WWW Authenticate: Digest nonce: " + nonce + '\r\n'
+                    self.wfile.write(bytes(msg, 'utf-8'))
+                    log(msg,'snd')
                                         
             elif datos[0] == "INVITE" or "ACK" or "BYE":
                 user = datos[1].split(':')[1]
@@ -150,11 +168,11 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                             my_socket.send(bytes(line, 'utf-8') + b'\r\n') ##
                             # METODO LOG  --> SENT TO
                             
-                            dato = my_socket.recv(1024)
-                            datos = dato.decode('utf-8').split() ##
+                            datonew = my_socket.recv(1024)
+                            datos = datonew.decode('utf-8').split() ##
                             print("Recibido: ", dato.decode('utf-8'), '\r\n') ##
                             # METODO LOG --> RECEIVED FROM
-                        self.wfile.write(dato)
+                        self.wfile.write(datonew)
                         # METODO LOG --> SENT TO
                     else:
                         self.wfile.write(b"SIP/2.0 404 User Not Found\r\n")
