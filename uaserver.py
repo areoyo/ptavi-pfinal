@@ -37,13 +37,15 @@ fich_log = data["log_path"]
 AUDIO = data["audio_path"]
 PROXY_IP = data["regproxy_ip"]
 PROXY_PORT = int(data["regproxy_puerto"])
-PORTRTP = data ["rtpaudio_puerto"]
+PORTRTP = data["rtpaudio_puerto"]
 
 """
 FICHERO LOG
 """
+
+
 def log (opcion, accion):
-    fich = open (fich_log, 'a')
+    fich = open(fich_log, 'a')
     hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
     if opcion != 'empty':
         log_datos = str(PROXY_IP) + ':' + str(PROXY_PORT) + ' '
@@ -51,74 +53,77 @@ def log (opcion, accion):
             status = ' Sent to ' + log_datos
         elif accion == 'rcv':
             status = ' Received from ' + log_datos
-        fich.write(hora + status + opcion.replace('\r\n',' ')+ '\r\n')
+        fich.write(hora + status + opcion.replace('\r\n', ' ') + '\r\n')
     else:
         if accion == 'start':
             status = ' Starting...'
         elif accion == 'finish':
-            status = ' Finishing.'  
+            status = ' Finishing.'
         elif accion == 'error':
-            status =' Error: No server listening at '
+            status = ' Error: No server listening at '
             status += str(SERVER) + ' port ' + str(PORT)
-        fich.write(hora  + status + '\r\n')
+        fich.write(hora + status + '\r\n')
+
 
 class EchoHandler(socketserver.DatagramRequestHandler):
+
     rtp_list = []
+
+
     def handle(self):
         # Escribe dirección y puerto del cliente (de tupla client_address)
         while 1:
             # Leyendo línea a línea lo que nos envía el cliente
             line = self.rfile.read()
             datos = line.decode('utf-8').split()
+            print('RECIBIDO--:\r\n', line.decode('utf-8'))
             # Si no hay más líneas salimos del bucle infinito
             if not line:
                 break
-            log(line.decode('utf-8'),'rcv')
-            print('RECIBIDO--:\r\n', line.decode('utf-8'))
-            
+
+            log(line.decode('utf-8'), 'rcv')
+
             if datos[0] == "INVITE":
                 self.wfile.write(b"SIP/2.0 100 Trying" + b"\r\n\r\n")
                 self.wfile.write(b"SIP/2.0 180 Ringing" + b"\r\n\r\n")
                 LINE = 'SIP/2.0 200 OK\r\n'
-                LINE += 'Content-Type: application/sdp' + '\r\n\r\n' 
-                LINE += 'v = 0\r\n' 
-                LINE += 'o = {} {}\r\n'.format(data["account_username"], \
-                         data['uaserver_ip'])
+                LINE += 'Content-Type: application/sdp' + '\r\n\r\n'
+                LINE += 'v = 0\r\n'
+                LINE += 'o = ' + data["account_username"] + ' '
+                LINE += data['uaserver_ip']
                 LINE += 's = MiSesion\r\n'
                 LINE += 't = 0\r\n'
                 LINE += 'm = audio {} RTP\r\n'.format(data['rtpaudio_puerto'])
-                self.wfile.write(bytes(LINE,'utf-8'))
-                log(LINE,'snd')
+                self.wfile.write(bytes(LINE, 'utf-8'))
+                log(LINE, 'snd')
                 self.rtp_list.append(datos[14])
-                
             elif datos[0] == 'ACK':
                 """
                 Enviamos RTP
                 """
                 aEjecutarVLC = 'cvlc rtp://@127.0.0.1:' + PORTRTP
-                aEjecutarVLC +='> /dev/null &'         #VLC
+                aEjecutarVLC +='> /dev/null &'
                 print("Vamos a ejecutar ", aEjecutarVLC)
                 os.system(aEjecutarVLC)
-                aEjecutar = "./mp32rtp -i " + self.rtp_list[0] + " -p " 
+                aEjecutar = "./mp32rtp -i " + self.rtp_list[0] + " -p "
                 aEjecutar += PORTRTP + " < " + AUDIO
                 print("Vamos a ejecutar ", aEjecutar)
                 os.system(aEjecutar)
                 print("FIN DE TRANSMISION RTP")
                 self.rtp_list.clear()
-            
             elif datos[0] == 'BYE':
                 LINE = 'SIP/2.0 200 OK\r\n'
-                self.wfile.write(bytes(LINE,'utf-8'))
-                log(LINE,'snd')
+                self.wfile.write(bytes(LINE, 'utf-8'))
+                log(LINE, 'snd')
             
             elif datos[0] != "INVITE" or "BYE" or "ACK":
                 LINE = "SIP/2.0 405 Method Not Allowed\r\n"
                 self.wfile.write(bytes(LINE))
-                log(LINE,'snd')
+                log(LINE, 'snd')
             else:
                 LINE = "SIP/2.0 400 Bad Request\r\n"
                 self.wfile.write(bytes(LINE))
-                log(LINE,'snd')
+                log(LINE, 'snd')
                 
 if __name__ == "__main__":
     serv = socketserver.UDPServer((SERVER, PORT), EchoHandler)
@@ -127,4 +132,4 @@ if __name__ == "__main__":
         serv.serve_forever()
     except KeyboardInterrupt:
         print("Finalizado servidor")
-        log('empty','finish')
+        log('empty', 'finish')

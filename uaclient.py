@@ -53,7 +53,7 @@ def log(op, accion):
         if accion == 'snd':
             status = ' Sent to ' + log_datos + ' ' + op.replace('\r\n', ' ')
         elif accion == 'rcv':
-            status = ' Received from ' + log_datos 
+            status = ' Received from ' + log_datos
             status += ' ' + op.replace('\r\n', ' ')
         elif accion == 'error':
             status = op
@@ -71,7 +71,7 @@ def log(op, accion):
  COMIENZA CONEXION
 """
 
- 
+
 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
     my_socket.connect((SERVER, PORT))
     try:
