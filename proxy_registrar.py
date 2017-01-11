@@ -175,8 +175,8 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                         newline += newsend[4] + '\r\n' + newsend[5] + '\r\n'
                         newline += newsend[6] + '\r\n' + newsend[7] + '\r\n'
                     try:
-                        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) \
-                                            as my_socket:
+                        s_skt= socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+                        with s_skt as my_socket:
                             my_socket.setsockopt(socket.SOL_SOCKET,
                                                  socket.SO_REUSEADDR, 1)
                             my_socket.connect((newIP, newport))
@@ -206,7 +206,7 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                         msg = 'ERROR {} {}'.format(newIP, newport)
                         self.wfile.write(bytes(msg, 'utf-8'))
                         log(msg, 'error')
-                        log(msg, 'snd')  
+                        log(msg, 'snd')
                 else:
                     msg = "SIP/2.0 404 User Not Found\r\n"
                     self.wfile.write(bytes(msg, 'utf-8'))
