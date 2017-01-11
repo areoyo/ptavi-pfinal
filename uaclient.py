@@ -37,7 +37,8 @@ PORT = int(data["regproxy_puerto"])
 SIP = data["account_username"]+':'+data["uaserver_puerto"]
 fich_log = data["log_path"]
 USER = data["account_username"]
-AUDIO = data["audio_path"]
+AUD = data["audio_path"]
+PORTRTP = data ["rtpaudio_puerto"]
 
 """
 FICHERO LOG
@@ -46,37 +47,38 @@ def log (opcion, accion):
     fich = open (fich_log, 'a')
     hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
     if opcion != 'empty':
-        log_datos = str(SERVER) + ':' + str(PORT) + ' '
+        log_datos = str(SERVER) + ':' + str(PORT)
         if accion == 'snd':
-            status = ' Sent to ' + log_datos
+            status = ' Sent to ' + log_datos + ' '
+            status += opcion.replace('\r\n',' ')
         elif accion == 'rcv':
-            status = ' Received from ' + log_datos
-        fich.write(hora + status + opcion.replace('\r\n',' ')+ '\r\n')
+            status = ' Received from ' + log_datos + ' ' 
+            status += opcion.replace('\r\n',' ')
+        elif accion == 'error':
+            status = msg
+        
     else:
         if accion == 'start':
             status = ' Starting...'
         elif accion == 'finish':
-            status = ' Finishing.'  
+            status = ' Finishing.'
         elif accion == 'error':
-            status ==' Error: No server listening at '+ SERVER + ' port ' + PORT
-        fich.write(hora  + status + '\r\n')
+            status =' Error: No proxy listening at '
+            status += str(SERVER) + ' port ' + str(PORT)
+    fich.write(hora  + status + '\r\n')
  
 """
  COMIENZA CONEXION
 """       
 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
     my_socket.connect((SERVER, PORT))
+    try:
+        log('empty','start')
 
-    log('empty','start')
-
-    if METODO == 'REGISTER':
-        try:
+        if METODO == 'REGISTER':
             LINE = 'REGISTER sip:{} SIP/2.0\r\nExpires: {}'.format(SIP, OPCION)
-        except socket.error:
-            log('empty','error')
-        
-    elif METODO == 'INVITE':
-        try:
+            
+        elif METODO == 'INVITE':
             LINE = 'INVITE sip:{} SIP/2.0\r\n'.format(OPCION)
             LINE += 'Content-Type: application/sdp' + '\r\n\r\n' 
             LINE += 'v = 0\r\n' 
@@ -85,46 +87,52 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
             LINE += 's = MiSesion\r\n'
             LINE += 't = 0\r\n'
             LINE += 'm = audio {} RTP'.format(data['rtpaudio_puerto'])
-        except socket.error:
-            log('empty','error')
-        
-    elif METODO == 'BYE': 
-        try:
-            LINE = 'BYE sip: {} SIP/2.0'.format(OPCION)
-        except socket.error:
-            log('empty','error')
-    my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
-    log(LINE,'snd')
-    
-    dato = my_socket.recv(1024)
-    datos = dato.decode('utf-8').split()
-    log(dato.decode('utf-8'),'rcv')
-        
-    if datos[1] == '100' and datos[7] == '200':
-        METODO = 'ACK'
-        LINE = METODO + " sip:" + datos[16] + " SIP/2.0\r\n"
-        my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
-        log(LINE,'snd')
-        print("RTP")
-        aEjecutar = "./mp32rtp -i " + datos[17] + " -p 23032 < " + AUDIO
-        print("Vamos a ejecutar ", aEjecutar)
-        os.system(aEjecutar)
-        puerto = datos[17]
-        print("FIN DE TRANSMISION RTP")
-        
-    elif datos[1] == '401':
-        nonce = datos[7]
-        h = hashlib.sha1()
-        h.update(bytes(data["account_passwd"], 'utf-8'))
-        h.update(bytes(nonce, 'utf-8'))
-        LINE = 'REGISTER sip:' + SIP + ' SIP/2.0\r\nExpires: ' + OPCION + '\r\n'
-        LINE += 'Authorization: Digest response= {}'.format(h.hexdigest())
+            
+        elif METODO == 'BYE':
+            LINE = 'BYE sip:{} SIP/2.0'.format(OPCION)
+            
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
         log(LINE,'snd')
         
         dato = my_socket.recv(1024)
         datos = dato.decode('utf-8').split()
         log(dato.decode('utf-8'),'rcv')
+        print('RECIBIDO--:\r\n', dato.decode('utf-8'))
+        if datos[1] == '100' and datos[7] == '180' and datos[13] == '200':
+            METODO = 'ACK'
+            LINE = METODO + " sip:" + datos[25] + " SIP/2.0"
+            my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+            log(LINE,'snd')
+            aEjecutarVLC = 'cvlc rtp://@127.0.0.1:' + PORTRTP + '> /dev/null &'         #VLC
+            print("Vamos a ejecutar ", aEjecutarVLC)
+            os.system(aEjecutarVLC)
+            aEjecutar = "./mp32rtp -i " + datos[26] +" -p " + PORTRTP + " < " + AUD
+            print("Vamos a ejecutar ", aEjecutar)
+            os.system(aEjecutar)
+            puerto = datos[17]
+        
+        elif datos[1] == '401':
+            nonce = datos[7]
+            h = hashlib.sha1()
+            h.update(bytes(data["account_passwd"], 'utf-8'))
+            h.update(bytes(nonce, 'utf-8'))
+            LINE = 'REGISTER sip:' + SIP + ' SIP/2.0\r\nExpires: ' + OPCION + '\r\n'
+            LINE += 'Authorization: Digest response= {}'.format(h.hexdigest())
+            my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
+            log(LINE,'snd')
+            
+            dato = my_socket.recv(1024)
+            datos = dato.decode('utf-8').split()
+            log(dato.decode('utf-8'),'rcv')
+        elif datos[0] == 'ERROR':
+            msg = 'Error: No server listening at ' + datos[-2] + ':' + datos[-1]
+            log(msg,'error')
+            log('empty','finish')
 
-log('empty','finish')
-print("Socket terminado.")
+        log('empty','finish')
+        print("Socket terminado.")
+        
+    except ConnectionRefusedError:
+        log('empty','error')
+        log('empty','finish')
+        print("Socket terminado.")

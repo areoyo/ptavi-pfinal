@@ -37,6 +37,7 @@ fich_log = data["log_path"]
 AUDIO = data["audio_path"]
 PROXY_IP = data["regproxy_ip"]
 PROXY_PORT = int(data["regproxy_puerto"])
+PORTRTP = data ["rtpaudio_puerto"]
 
 """
 FICHERO LOG
@@ -55,7 +56,10 @@ def log (opcion, accion):
         if accion == 'start':
             status = ' Starting...'
         elif accion == 'finish':
-            status = ' Finishing.'
+            status = ' Finishing.'  
+        elif accion == 'error':
+            status =' Error: No server listening at '
+            status += str(SERVER) + ' port ' + str(PORT)
         fich.write(hora  + status + '\r\n')
 
 class EchoHandler(socketserver.DatagramRequestHandler):
@@ -70,10 +74,11 @@ class EchoHandler(socketserver.DatagramRequestHandler):
             if not line:
                 break
             log(line.decode('utf-8'),'rcv')
+            print('RECIBIDO--:\r\n', line.decode('utf-8'))
             
             if datos[0] == "INVITE":
-                self.wfile.write(b"SIP/2.0 100 Trying" + b"\r\n")
-                self.wfile.write(b"SIP/2.0 180 Ringing" + b"\r\n")
+                self.wfile.write(b"SIP/2.0 100 Trying" + b"\r\n\r\n")
+                self.wfile.write(b"SIP/2.0 180 Ringing" + b"\r\n\r\n")
                 LINE = 'SIP/2.0 200 OK\r\n'
                 LINE += 'Content-Type: application/sdp' + '\r\n\r\n' 
                 LINE += 'v = 0\r\n' 
@@ -84,19 +89,27 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 LINE += 'm = audio {} RTP\r\n'.format(data['rtpaudio_puerto'])
                 self.wfile.write(bytes(LINE,'utf-8'))
                 log(LINE,'snd')
-                self.rtp_list.append(datos[17])
+                self.rtp_list.append(datos[14])
                 
             elif datos[0] == 'ACK':
                 """
                 Enviamos RTP
                 """
-                
-                print("RTP")
-                aEjecutar = "./mp32rtp -i " + self.rtp_list[0] + " -p 23032 < " + AUDIO
+                aEjecutarVLC = 'cvlc rtp://@127.0.0.1:' + PORTRTP
+                aEjecutarVLC +='> /dev/null &'         #VLC
+                print("Vamos a ejecutar ", aEjecutarVLC)
+                os.system(aEjecutarVLC)
+                aEjecutar = "./mp32rtp -i " + self.rtp_list[0] + " -p " 
+                aEjecutar += PORTRTP + " < " + AUDIO
                 print("Vamos a ejecutar ", aEjecutar)
                 os.system(aEjecutar)
                 print("FIN DE TRANSMISION RTP")
                 self.rtp_list.clear()
+            
+            elif datos[0] == 'BYE':
+                LINE = 'SIP/2.0 200 OK\r\n'
+                self.wfile.write(bytes(LINE,'utf-8'))
+                log(LINE,'snd')
             
             elif datos[0] != "INVITE" or "BYE" or "ACK":
                 LINE = "SIP/2.0 405 Method Not Allowed\r\n"
