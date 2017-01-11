@@ -45,19 +45,18 @@ FICHERO LOG
 """
 
 
-def log(opcion, accion):
+def log(op, accion):
     fich = open(fich_log, 'a')
     hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
-    if opcion != 'empty':
+    if op != 'empty':
         log_datos = str(SERVER) + ':' + str(PORT)
         if accion == 'snd':
-            status = ' Sent to ' + log_datos + ' ' 
-            status += opcion.replace('\r\n', ' ')
+            status = ' Sent to ' + log_datos + ' ' + op.replace('\r\n', ' ')
         elif accion == 'rcv':
-            status = ' Received from ' + log_datos + ' ' 
-            status += opcion.replace('\r\n', ' ')
+            status = ' Received from ' + log_datos 
+            status += ' ' + op.replace('\r\n', ' ')
         elif accion == 'error':
-            status = msg
+            status = op
     else:
         if accion == 'start':
             status = ' Starting...'
@@ -70,7 +69,7 @@ def log(opcion, accion):
 
 """
  COMIENZA CONEXION
-""" 
+"""
 
  
 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
@@ -82,10 +81,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
             LINE = 'REGISTER sip:{} SIP/2.0\r\nExpires: {}'.format(SIP, OPCION)
         elif METODO == 'INVITE':
             LINE = 'INVITE sip:{} SIP/2.0\r\n'.format(OPCION)
-            LINE += 'Content-Type: application/sdp' + '\r\n\r\n'  
-            LINE += 'v = 0\r\n' 
-            LINE += 'o = {} {}\r\n'.format(data["account_username"], 
-                     data['uaserver_ip'])
+            LINE += 'Content-Type: application/sdp\r\n\r\n'
+            LINE += 'v = 0\r\n'
+            LINE += 'o = ' + data["account_username"] + ' '
+            line += data['uaserver_ip']
             LINE += 's = MiSesion\r\n'
             LINE += 't = 0\r\n'
             LINE += 'm = audio {} RTP'.format(data['rtpaudio_puerto'])
@@ -117,7 +116,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
             h = hashlib.sha1()
             h.update(bytes(data["account_passwd"], 'utf-8'))
             h.update(bytes(nonce, 'utf-8'))
-            LINE = 'REGISTER sip:' + SIP + ' SIP/2.0\r\nExpires: ' + OPCION + '\r\n'
+            LINE = 'REGISTER sip:' + SIP + ' SIP/2.0\r\nExpires: '
+            LINE += OPCION + '\r\n'
             LINE += 'Authorization: Digest response= {}'.format(h.hexdigest())
             my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
             log(LINE, 'snd')
