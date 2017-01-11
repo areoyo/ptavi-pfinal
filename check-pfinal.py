@@ -38,11 +38,13 @@ files = ['README.md',
          'cancion.mp3',
          'avanzadas.txt',
          'passwords.txt',
-         '.git']
+         '.git',
+         'useragenthandler.py']
 
 python_files = ['uaclient.py',
                 'uaserver.py',
-                'proxy_registrar.py']
+                'proxy_registrar.py',
+                'useragenthandler.py']
 
 avanzadasDict = {
     u"Cabecera proxy": 0.2,
