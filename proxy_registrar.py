@@ -17,7 +17,6 @@ import json
 if len(sys.argv) != 2:
     sys.exit("Usage: python3 proxy_registrar.py config")
 _, CONFIG = sys.argv
-print('Server MiServidorBigBang listening at port 5555...\r\n')
 
 """
  INICIALIZA EL HANDLER
@@ -42,22 +41,20 @@ fich_log = data["log_path"]
 FICHERO LOG
 """
 def log (opcion, accion):
-    #print('LOG') ##
     fich = open (fich_log, 'a')
     hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
     if opcion != 'empty':
+        log_datos = str(SERVER) + ':' + str(PORT) + ' '
         if accion == 'snd':
-            status = ' Sent to '
+            status = ' Sent to ' + log_datos
         elif accion == 'rcv':
-            status = ' Received from '
-        fich.write(hora + status + opcion.replace('\r\n',' ') + '\r\n')
+            status = ' Received from ' + log_datos
+        fich.write(hora + status + opcion.replace('\r\n',' ')+ '\r\n')
     else:
         if accion == 'start':
             status = ' Starting...'
         elif accion == 'finish':
-            status = ' Finishing.'  
-        elif accion == 'error':
-            status ==' Error: No server listening at '+SERVER+ ' port ' + PORT
+            status = ' Finishing.'
         fich.write(hora  + status + '\r\n')
 
 """
@@ -90,12 +87,23 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
         tmpList = []
         for cliente in self.misdatos:
             expires = int(self.misdatos[cliente][-1])
-            hora = time.time()
-            if expires < hora:
+            if expires < time.time():
                 tmpList.append(cliente)
-                expire_t = True
         for client in tmpList:
             del self.misdatos[client]
+            print ('DELETE', client) 
+            
+    def register (self, t_register, user_register, address_c, puerto):
+        self.json2registered()
+        self.hora = float(time.time())
+        self.h_ex = float(time.time()) + float(t_register)                                                
+        self.datoscliente = [address_c, puerto, self.hora, self.h_ex]
+        self.misdatos[user_register] = self.datoscliente
+        if int(t_register) == 0:
+            del self.misdatos[user_register] 
+        self.wfile.write(b"SIP/2.0 200 OK\r\n")
+        self.delete()
+        self.register2json()
 
     def handle(self):
         # Escribe dirección y puerto del cliente (de tupla client_address)
@@ -103,13 +111,13 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
             # Leyendo línea a línea lo que nos envía el cliente
             line = self.rfile.read()
             datos = line.decode('utf-8').split()
-            print(line.decode('utf-8'))
             # Si no hay más líneas salimos del bucle infinito
             if not line:
                 break
             
             log('empty','start')
             log(line.decode('utf-8'),'rcv')
+            
             """
              CODIGOS DE RESPUESTA
             """                
@@ -126,22 +134,12 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                             h.update(bytes(nonce, 'utf-8'))
                             dat_nonce = h.hexdigest()
                             if dat_nonce == response:
-                                self.json2registered()
-                                self.hora = float(time.time())
-                                self.h_ex = float(time.time()) + float(datos[4])                                                
-                                self.datoscliente = [self.client_address[0], \
-                                                    port, self.hora, \
-                                                    self.h_ex]
-                                self.misdatos[user] = self.datoscliente
-                                if int(datos[4]) == 0:
-                                    del self.misdatos[datos[1].split(':')[1]] 
-                                self.wfile.write(b"SIP/2.0 200 OK\r\n")
-                                self.delete()
-                                self.register2json()                   
-                                print ('DESPUES DE DEL', self.misdatos) ##
+                                client_register = datos[1].split(':')[1]
+                                self.register (datos[4], client_register, \
+                                               self.client_address[0], port)
                             else:
                                 msg = "SIP/2.0 404 User Not Found\r\n"
-                                self.wfile.write(msg)
+                                self.wfile.write(bytes(msg, 'utf-8'))
                                 log(msg,'snd')
                 else:
                     msg = "SIP/2.0 401 Unauthorized\r\n"
@@ -160,13 +158,10 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                         my_socket.setsockopt(socket.SOL_SOCKET, 
                                              socket.SO_REUSEADDR, 1)
                         my_socket.connect((newIP, newport))
-                        print("Enviando:", line)
-                        my_socket.send(line) ##
+                        my_socket.send(line)
                         log(line.decode('utf-8'),'snd')
                         if datos [0] != 'ACK':
                             datonew = my_socket.recv(1024)
-                            datos = datonew.decode('utf-8').split() ##
-                            print("Recibido: ", datonew.decode('utf-8'), '\r\n')##
                             log(datonew.decode('utf-8'),'rcv')
                             self.wfile.write(datonew)
                             log(datonew.decode('utf-8'),'snd')
@@ -177,17 +172,19 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                 
             elif datos[0] != "INVITE" or "BYE" or "ACK":
                 LINE = "SIP/2.0 405 Method Not Allowed\r\n"
-                self.wfile.write(bytes(LINE))
+                self.wfile.write(bytes(LINE, 'utf-8'))
                 log(LINE,'snd')
             else:
                 LINE = "SIP/2.0 400 Bad Request\r\n"
-                self.wfile.write(bytes(LINE))
+                self.wfile.write(bytes(LINE, 'utf-8'))
                 log(LINE,'snd')
 
 if __name__ == "__main__":
     serv = socketserver.UDPServer((SERVER, PORT), RegisterHandler)
+    print('Server MiServidorBigBang listening at port 5555...\r\n')
     try:
         serv.serve_forever()
+        
     except KeyboardInterrupt:
         print("Finalizado servidor")
         log('empty','finish')
