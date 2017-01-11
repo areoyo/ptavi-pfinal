@@ -5,9 +5,19 @@ Cabecera proxy:
     
 Reestablecer los usuarios conectados:
     Se añade la posibilidad de reestablecer los usuarios conectados siempre que el fichero tenga algun contenido guardado mediante la funcion json trabajada en practicas anteriores.
+    def json2registered(self):                                                      # REESTABLECER USUARIOS CONECTADOS
+        try:
+            with open(data['database_path']) as client_file:
+                self.misdatos = json.load(client_file)
+        except:
+            self.register2json()
+    
     
 Integración de (c)vlc:
     Mediante los siguientes comandos se admite la posibilidad de reproducir en vlc la cancion mientras se esta enviando:
     - aEjecutarVLC = 'cvlc rtp://@127.0.0.1:' + PORTRTP + '> /dev/null &'
     - print("Vamos a ejecutar ", aEjecutarVLC)
     - os.system(aEjecutarVLC)
+    
+Declaracion del programa useragenthandler.py:
+    Programa donde analizo los ficheros .xml y creo un diccionario con la informacion que extraigo de estos para cada UA.
