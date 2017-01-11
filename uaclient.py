@@ -43,14 +43,14 @@ AUDIO = data["audio_path"]
 FICHERO LOG
 """
 def log (opcion, accion):
-    print('LOG') ##
     fich = open (fich_log, 'a')
     hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
     if opcion != 'empty':
+        log_datos = str(SERVER) + ':' + str(PORT) + ' '
         if accion == 'snd':
-            status = ' Sent to '
+            status = ' Sent to ' + log_datos
         elif accion == 'rcv':
-            status = ' Received from '
+            status = ' Received from ' + log_datos
         fich.write(hora + status + opcion.replace('\r\n',' ')+ '\r\n')
     else:
         if accion == 'start':
@@ -58,8 +58,8 @@ def log (opcion, accion):
         elif accion == 'finish':
             status = ' Finishing.'  
         elif accion == 'error':
-            status == SERVER + ' port ' + PORT
-        fich.write(hora + 'Error: No server listening at ' + status + '\r\n')
+            status ==' Error: No server listening at '+ SERVER + ' port ' + PORT
+        fich.write(hora  + status + '\r\n')
  
 """
  COMIENZA CONEXION
@@ -93,28 +93,24 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
             LINE = 'BYE sip: {} SIP/2.0'.format(OPCION)
         except socket.error:
             log('empty','error')
-        
-    print("Enviando:", LINE, '\r\n') ##
     my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
     log(LINE,'snd')
     
     dato = my_socket.recv(1024)
     datos = dato.decode('utf-8').split()
-    print("Recibido: ", dato.decode('utf-8')) ##
     log(dato.decode('utf-8'),'rcv')
         
     if datos[1] == '100' and datos[7] == '200':
         METODO = 'ACK'
         LINE = METODO + " sip:" + datos[16] + " SIP/2.0\r\n"
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
-        print("Enviando:", LINE, '\r\n') ##
         log(LINE,'snd')
         print("RTP")
         aEjecutar = "./mp32rtp -i " + datos[17] + " -p 23032 < " + AUDIO
         print("Vamos a ejecutar ", aEjecutar)
         os.system(aEjecutar)
+        puerto = datos[17]
         print("FIN DE TRANSMISION RTP")
-        # METODO LOG --> AUDIO TRANSFER
         
     elif datos[1] == '401':
         nonce = datos[7]
@@ -123,13 +119,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
         h.update(bytes(nonce, 'utf-8'))
         LINE = 'REGISTER sip:' + SIP + ' SIP/2.0\r\nExpires: ' + OPCION + '\r\n'
         LINE += 'Authorization: Digest response= {}'.format(h.hexdigest())
-        print("Enviando:", LINE, '\r\n') ##
         my_socket.send(bytes(LINE, 'utf-8') + b'\r\n')
         log(LINE,'snd')
         
         dato = my_socket.recv(1024)
         datos = dato.decode('utf-8').split()
-        print("Recibido: ", dato.decode('utf-8')) ##
         log(dato.decode('utf-8'),'rcv')
 
 log('empty','finish')
