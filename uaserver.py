@@ -35,38 +35,37 @@ PORT = int(data["uaserver_puerto"])
 SIP = data["account_username"]+':'+data["uaserver_puerto"]
 fich_log = data["log_path"]
 AUDIO = data["audio_path"]
+PROXY_IP = data["regproxy_ip"]
+PROXY_PORT = int(data["regproxy_puerto"])
 
 """
 FICHERO LOG
 """
 def log (opcion, accion):
-    print('LOG') ##
     fich = open (fich_log, 'a')
     hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
     if opcion != 'empty':
+        log_datos = str(PROXY_IP) + ':' + str(PROXY_PORT) + ' '
         if accion == 'snd':
-            status = ' Sent to '
+            status = ' Sent to ' + log_datos
         elif accion == 'rcv':
-            status = ' Received from '
+            status = ' Received from ' + log_datos
         fich.write(hora + status + opcion.replace('\r\n',' ')+ '\r\n')
     else:
         if accion == 'start':
             status = ' Starting...'
         elif accion == 'finish':
-            status = ' Finishing.'  
-        elif accion == 'error':
-            status == SERVER + ' port ' + PORT
-        fich.write(hora + 'Error: No server listening at ' + status + '\r\n')
+            status = ' Finishing.'
+        fich.write(hora  + status + '\r\n')
 
 class EchoHandler(socketserver.DatagramRequestHandler):
-    rtp = []
+    rtp_list = []
     def handle(self):
         # Escribe dirección y puerto del cliente (de tupla client_address)
         while 1:
             # Leyendo línea a línea lo que nos envía el cliente
             line = self.rfile.read()
             datos = line.decode('utf-8').split()
-            print(line.decode('utf-8'))
             # Si no hay más líneas salimos del bucle infinito
             if not line:
                 break
@@ -85,19 +84,19 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 LINE += 'm = audio {} RTP\r\n'.format(data['rtpaudio_puerto'])
                 self.wfile.write(bytes(LINE,'utf-8'))
                 log(LINE,'snd')
-                self.rtp.append(datos[17])
+                self.rtp_list.append(datos[17])
                 
             elif datos[0] == 'ACK':
                 """
                 Enviamos RTP
                 """
+                
                 print("RTP")
-                aEjecutar = "./mp32rtp -i " + self.rtp[0] + " -p 23032 < " + AUDIO
+                aEjecutar = "./mp32rtp -i " + self.rtp_list[0] + " -p 23032 < " + AUDIO
                 print("Vamos a ejecutar ", aEjecutar)
                 os.system(aEjecutar)
                 print("FIN DE TRANSMISION RTP")
-                del self.rtp
-                # METODO LOG --> AUDIO TRANSFER
+                self.rtp_list.clear()
             
             elif datos[0] != "INVITE" or "BYE" or "ACK":
                 LINE = "SIP/2.0 405 Method Not Allowed\r\n"
