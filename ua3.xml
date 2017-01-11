@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<config>
-  <account username="raquelita@claroquesiguapi.com" passwd="2565"/>
-  <uaserver ip="localhost" puerto="5060"/>
-  <rtpaudio puerto="23032"/>
-  <regproxy ip="localhost" puerto="5555"/>
-  <log path="log2.txt"/>
-  <audio path="cancion.mp3"/>
-</config>
