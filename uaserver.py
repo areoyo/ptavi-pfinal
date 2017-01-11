@@ -44,7 +44,7 @@ FICHERO LOG
 """
 
 
-def log (opcion, accion):
+def log(opcion, accion):
     fich = open(fich_log, 'a')
     hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
     if opcion != 'empty':
@@ -68,7 +68,6 @@ def log (opcion, accion):
 class EchoHandler(socketserver.DatagramRequestHandler):
 
     rtp_list = []
-
 
     def handle(self):
         # Escribe dirección y puerto del cliente (de tupla client_address)
@@ -102,7 +101,7 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 Enviamos RTP
                 """
                 aEjecutarVLC = 'cvlc rtp://@127.0.0.1:' + PORTRTP
-                aEjecutarVLC +='> /dev/null &'
+                aEjecutarVLC += '> /dev/null &'
                 print("Vamos a ejecutar ", aEjecutarVLC)
                 os.system(aEjecutarVLC)
                 aEjecutar = "./mp32rtp -i " + self.rtp_list[0] + " -p "
@@ -114,8 +113,7 @@ class EchoHandler(socketserver.DatagramRequestHandler):
             elif datos[0] == 'BYE':
                 LINE = 'SIP/2.0 200 OK\r\n'
                 self.wfile.write(bytes(LINE, 'utf-8'))
-                log(LINE, 'snd')
-            
+                log(LINE, 'snd')  
             elif datos[0] != "INVITE" or "BYE" or "ACK":
                 LINE = "SIP/2.0 405 Method Not Allowed\r\n"
                 self.wfile.write(bytes(LINE))
@@ -124,7 +122,7 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 LINE = "SIP/2.0 400 Bad Request\r\n"
                 self.wfile.write(bytes(LINE))
                 log(LINE, 'snd')
-                
+
 if __name__ == "__main__":
     serv = socketserver.UDPServer((SERVER, PORT), EchoHandler)
     print("Listening...")
