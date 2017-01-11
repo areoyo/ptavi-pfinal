@@ -27,7 +27,7 @@ class UserAgentHandler(ContentHandler):
         """
         if name in self.attrs:
             for atr in self.attrs[name]:
-                self.misdatos[nam e+ '_' + atr] = str(atributes.get(atr, ""))
+                self.misdatos[name + '_' + atr] = str(atributes.get(atr, ""))
 
     def get_tags(self):
         """

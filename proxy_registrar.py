@@ -170,13 +170,13 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                     newline = newsend[0]
                     newline += '\r\nVia: SIP/2.0/UDP ' + log_datos + '\r\n'
                     if datos[0] == 'INVITE':
-                        newline += newsend[1] + '\r\n\r\n' 
+                        newline += newsend[1] + '\r\n\r\n'
                         newline += newsend[3] + '\r\n'
                         newline += newsend[4] + '\r\n' + newsend[5] + '\r\n'
                         newline += newsend[6] + '\r\n' + newsend[7] + '\r\n'
                     try:
                         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) \
-                        as my_socket:
+                                            as my_socket:
                             my_socket.setsockopt(socket.SOL_SOCKET,
                                                  socket.SO_REUSEADDR, 1)
                             my_socket.connect((newIP, newport))
@@ -187,7 +187,7 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                                 log(datonew.decode('utf-8'), 'rcv')
                                 print('RECIBIDO:\r\n', datonew.decode('utf-8'))
                                 newsend = datonew.decode('utf-8').split('\r\n')
-                                newrsp = newsend[0] + '\r\nVia: SIP/2.0/UDP ' 
+                                newrsp = newsend[0] + '\r\nVia: SIP/2.0/UDP '
                                 newrsp += log_datos + '\r\n'
                                 if datos[0] == 'INVITE':
                                     newrsp += '\r\n' + newsend[2]
@@ -206,7 +206,7 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                         msg = 'ERROR {} {}'.format(newIP, newport)
                         self.wfile.write(bytes(msg, 'utf-8'))
                         log(msg, 'error')
-                        log(msg, 'snd')    
+                        log(msg, 'snd')  
                 else:
                     msg = "SIP/2.0 404 User Not Found\r\n"
                     self.wfile.write(bytes(msg, 'utf-8'))
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     print('Server MiServidorBigBang listening at port 5555...\r\n')
     try:
         serv.serve_forever()
-        
+
     except KeyboardInterrupt:
         print("Finalizado servidor")
         log('empty', 'finish')
