@@ -113,7 +113,7 @@ class EchoHandler(socketserver.DatagramRequestHandler):
             elif datos[0] == 'BYE':
                 LINE = 'SIP/2.0 200 OK\r\n'
                 self.wfile.write(bytes(LINE, 'utf-8'))
-                log(LINE, 'snd')  
+                log(LINE, 'snd')
             elif datos[0] != "INVITE" or "BYE" or "ACK":
                 LINE = "SIP/2.0 405 Method Not Allowed\r\n"
                 self.wfile.write(bytes(LINE))

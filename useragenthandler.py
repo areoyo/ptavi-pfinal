@@ -4,6 +4,7 @@
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 
+
 class UserAgentHandler(ContentHandler):
 
     def __init__(self):
@@ -26,7 +27,7 @@ class UserAgentHandler(ContentHandler):
         """
         if name in self.attrs:
             for atr in self.attrs[name]:
-                self.misdatos[name+'_'+atr] = str(atributes.get(atr,""))
+                self.misdatos[nam e+ '_' + atr] = str(atributes.get(atr, ""))
 
     def get_tags(self):
         """
