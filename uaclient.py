@@ -105,7 +105,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
             log(LINE, 'snd')
             aEjecutarVLC = 'cvlc rtp://@127.0.0.1:' + PORTRTP + '> /dev/null &'
             print("Vamos a ejecutar ", aEjecutarVLC)
-           os.system(aEjecutarVLC)
+            os.system(aEjecutarVLC)
             aEjecutar = "./mp32rtp -i " + datos[26] + " -p " + PORTRTP \
                         + " < " + AUD
             print("Vamos a ejecutar ", aEjecutar)
