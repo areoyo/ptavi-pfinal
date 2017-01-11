@@ -84,7 +84,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as my_socket:
             LINE += 'Content-Type: application/sdp\r\n\r\n'
             LINE += 'v = 0\r\n'
             LINE += 'o = ' + data["account_username"] + ' '
-            line += data['uaserver_ip']
+            LINE += data['uaserver_ip']
             LINE += 's = MiSesion\r\n'
             LINE += 't = 0\r\n'
             LINE += 'm = audio {} RTP'.format(data['rtpaudio_puerto'])
