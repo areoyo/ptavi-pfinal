@@ -103,7 +103,7 @@ class EchoHandler(socketserver.DatagramRequestHandler):
                 aEjecutarVLC = 'cvlc rtp://@127.0.0.1:' + PORTRTP
                 aEjecutarVLC += '> /dev/null &'
                 print("Vamos a ejecutar ", aEjecutarVLC)
-                #os.system(aEjecutarVLC)
+                os.system(aEjecutarVLC)
                 aEjecutar = "./mp32rtp -i " + self.rtp_list[0] + " -p "
                 aEjecutar += PORTRTP + " < " + AUDIO
                 print("Vamos a ejecutar ", aEjecutar)
