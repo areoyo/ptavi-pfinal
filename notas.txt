@@ -1,1 +1,13 @@
-
+Cabecera proxy:
+    Se ha realizado la opcion de cabecera poxy añadiendo la siguiente cabecera correspondiente a SIP que indica que el mensaje ha pasado por ese puesto:
+    - Via: SIP/2.0/UDP 127.0.0.1:5555
+    Es procedimiento lo hemos realizado descomponiendo el mensaje que le llega al proxy y volviendolo a montar con la cabecera intermedia.
+    
+Reestablecer los usuarios conectados:
+    Se añade la posibilidad de reestablecer los usuarios conectados siempre que el fichero tenga algun contenido guardado mediante la funcion json trabajada en practicas anteriores.
+    
+Integración de (c)vlc:
+    Mediante los siguientes comandos se admite la posibilidad de reproducir en vlc la cancion mientras se esta enviando:
+    - aEjecutarVLC = 'cvlc rtp://@127.0.0.1:' + PORTRTP + '> /dev/null &'
+    - print("Vamos a ejecutar ", aEjecutarVLC)
+    - os.system(aEjecutarVLC)

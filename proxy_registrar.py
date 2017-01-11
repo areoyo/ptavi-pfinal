@@ -36,6 +36,7 @@ fich = open(data['database_passwdpath'], 'r')
 lineas = fich.readlines()
 nonce = '654578'
 fich_log = data["log_path"]
+log_datos = str(SERVER) + ':' + str(PORT)
 
 """
 FICHERO LOG
@@ -44,18 +45,23 @@ def log (opcion, accion):
     fich = open (fich_log, 'a')
     hora = time.strftime('%Y%m%d%H%M%S', time.gmtime(time.time()))
     if opcion != 'empty':
-        log_datos = str(SERVER) + ':' + str(PORT) + ' '
         if accion == 'snd':
-            status = ' Sent to ' + log_datos
+            status = ' Sent to ' + log_datos + ' '
+            status += opcion.replace('\r\n',' ')
         elif accion == 'rcv':
-            status = ' Received from ' + log_datos
-        fich.write(hora + status + opcion.replace('\r\n',' ')+ '\r\n')
+            status = ' Received from ' + log_datos + ' ' 
+            status += opcion.replace('\r\n',' ')
+        elif accion == 'error':
+            portfail = opcion.split()[-1]
+            IPfail = opcion.split()[-2]
+            status =' Error: No server listening at '
+            status += str(IPfail) + ' port ' + str(portfail)
     else:
         if accion == 'start':
             status = ' Starting...'
         elif accion == 'finish':
-            status = ' Finishing.'
-        fich.write(hora  + status + '\r\n')
+            status = ' Finishing.'  
+    fich.write (hora  + status + '\r\n')
 
 """
  BASE DE DATOS DE USUARIOS REGISTRADOS
@@ -71,7 +77,7 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
         json.dump(self.misdatos, open(data['database_path'], 'w'))
         
     """
-    COMPRUEBA SI HAY FICHERO, LEE SU CONTENIDO Y LO USA LISTA DE USUARIO
+    COMPRUEBA SI HAY FICHERO, LEE SU CONTENIDO Y LO USA DE LISTA DE USUARIO
     """
     def json2registered(self):
         try:
@@ -91,7 +97,6 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                 tmpList.append(cliente)
         for client in tmpList:
             del self.misdatos[client]
-            print ('DELETE', client) 
             
     def register (self, t_register, user_register, address_c, puerto):
         self.json2registered()
@@ -106,17 +111,20 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
         self.register2json()
 
     def handle(self):
-        # Escribe dirección y puerto del cliente (de tupla client_address)
+        self.json2registered()
+        # Escribe dirección y puerto del cliente (de tupla client_address)        
         while 1:
             # Leyendo línea a línea lo que nos envía el cliente
+            log('empty','start')
             line = self.rfile.read()
             datos = line.decode('utf-8').split()
             # Si no hay más líneas salimos del bucle infinito
             if not line:
                 break
-            
-            log('empty','start')
+                
+            self.json2registered()
             log(line.decode('utf-8'),'rcv')
+            print('RECIBIDO --:\r\n', line.decode('utf-8'))
             
             """
              CODIGOS DE RESPUESTA
@@ -137,10 +145,11 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                                 client_register = datos[1].split(':')[1]
                                 self.register (datos[4], client_register, \
                                                self.client_address[0], port)
+                                msg = "SIP/2.0 200 OK\r\n"
                             else:
                                 msg = "SIP/2.0 404 User Not Found\r\n"
-                                self.wfile.write(bytes(msg, 'utf-8'))
-                                log(msg,'snd')
+                            self.wfile.write(bytes(msg, 'utf-8'))
+                            log(msg,'snd')
                 else:
                     msg = "SIP/2.0 401 Unauthorized\r\n"
                     msg += "WWW Authenticate: Digest nonce= " + nonce + '\r\n'
@@ -153,18 +162,47 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
                 if user in self.misdatos.keys():
                     newport = int(self.misdatos[user][1])
                     newIP = self.misdatos[user][0]
-                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) \
-                        as my_socket:
-                        my_socket.setsockopt(socket.SOL_SOCKET, 
-                                             socket.SO_REUSEADDR, 1)
-                        my_socket.connect((newIP, newport))
-                        my_socket.send(line)
-                        log(line.decode('utf-8'),'snd')
-                        if datos [0] != 'ACK':
-                            datonew = my_socket.recv(1024)
-                            log(datonew.decode('utf-8'),'rcv')
-                            self.wfile.write(datonew)
-                            log(datonew.decode('utf-8'),'snd')
+                    newsend = line.decode('utf-8').split('\r\n')                    #CABECERA PROXY
+                    newline = newsend[0]
+                    newline += '\r\nVia: SIP/2.0/UDP ' + log_datos + '\r\n'
+                    if datos[0] == 'INVITE':
+                        newline += newsend[1] + '\r\n\r\n' + newsend[3] + '\r\n' 
+                        newline += newsend[4] + '\r\n' + newsend[5] + '\r\n' 
+                        newline += newsend[6] + '\r\n' + newsend[7] + '\r\n'
+                    try:
+                        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) \
+                            as my_socket:
+                            my_socket.setsockopt(socket.SOL_SOCKET, 
+                                                 socket.SO_REUSEADDR, 1)
+                            my_socket.connect((newIP, newport))
+                            my_socket.send(bytes(newline, 'utf-8'))
+                            log(newline,'snd')
+                            if datos [0] != 'ACK':
+                                datonew = my_socket.recv(1024)
+                                log(datonew.decode('utf-8'),'rcv')
+                                print('RECIBIDO:\r\n', datonew.decode('utf-8'))
+                                newsend = datonew.decode('utf-8').split('\r\n')                    #CABECERA PROXY
+                                newrsp = newsend[0] + '\r\nVia: SIP/2.0/UDP ' 
+                                newrsp += log_datos + '\r\n'
+                                if datos[0] == 'INVITE':
+                                    newrsp += '\r\n' + newsend[2]
+                                    newrsp += '\r\nVia: SIP/2.0/UDP '
+                                    newrsp += log_datos + '\r\n\r\n' 
+                                    newrsp += newsend[4] 
+                                    newrsp += '\r\nVia: SIP/2.0/UDP '
+                                    newrsp += log_datos + '\r\n' + newsend[5]  
+                                    newrsp += '\r\n\r\n' + newsend[6] + '\r\n' 
+                                    newrsp += newsend[7] + '\r\n' + newsend[8]
+                                    newrsp += '\r\n' + newsend[9] + '\r\n'
+                                    newrsp += newsend[10] + '\r\n'
+                                self.wfile.write(bytes(newrsp, 'utf-8'))
+                                log(newrsp,'snd')
+                    except ConnectionRefusedError:
+                        msg = 'ERROR {} {}'.format(newIP, newport)
+                        self.wfile.write(bytes(msg, 'utf-8'))
+                        log(msg,'error')
+                        log(msg,'snd')
+                        
                 else:
                     msg = "SIP/2.0 404 User Not Found\r\n"
                     self.wfile.write(bytes(msg, 'utf-8'))
