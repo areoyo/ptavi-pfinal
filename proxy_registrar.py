@@ -79,7 +79,7 @@ class RegisterHandler(socketserver.DatagramRequestHandler):
     """
     COMPRUEBA SI HAY FICHERO, LEE SU CONTENIDO Y LO USA DE LISTA DE USUARIO
     """
-    def json2registered(self):
+    def json2registered(self):                                                      # REESTABLECER USUARIOS CONECTADOS
         try:
             with open(data['database_path']) as client_file:
                 self.misdatos = json.load(client_file)
