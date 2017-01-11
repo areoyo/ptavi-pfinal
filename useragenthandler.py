@@ -4,7 +4,6 @@
 from xml.sax import make_parser
 from xml.sax.handler import ContentHandler
 
-
 class UserAgentHandler(ContentHandler):
 
     def __init__(self):
